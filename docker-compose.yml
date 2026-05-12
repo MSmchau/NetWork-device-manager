@@ -8,6 +8,7 @@ services:
       mysql:
         condition: service_healthy
     environment:
+      TZ: Asia/Shanghai
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: net_admin
@@ -32,6 +33,7 @@ services:
       retries: 10
       start_period: 20s
     environment:
+      TZ: Asia/Shanghai
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: network_platform
       MYSQL_USER: net_admin
