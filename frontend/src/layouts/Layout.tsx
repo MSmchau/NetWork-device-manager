@@ -6,6 +6,7 @@ import {
   BellOutlined,
   FileProtectOutlined,
   SearchOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
 
 const menuItems = [
@@ -13,6 +14,7 @@ const menuItems = [
   { key: '/alarm', icon: <BellOutlined />, label: '告警信息' },
   { key: '/backup', icon: <FileProtectOutlined />, label: '备份记录' },
   { key: '/inspect', icon: <SearchOutlined />, label: '设备巡检' },
+  { key: '/status', icon: <DashboardOutlined />, label: '系统状态' },
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {

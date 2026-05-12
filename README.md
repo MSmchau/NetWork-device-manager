@@ -28,10 +28,10 @@ git clone https://github.com/MSmchau/NetWork-device-manager.git
 cd NetWork-device-manager
 
 # 启动所有服务
-docker-compose up -d
+docker compose up -d
 
 # 查看日志
-docker-compose logs -f backend
+docker compose logs -f backend
 ```
 
 访问 http://localhost:3000 进入前端界面。
@@ -49,7 +49,7 @@ make dev
 make update
 
 # 查看日志
-docker-compose logs -f backend
+docker compose logs -f backend
 ```
 
 原理：
