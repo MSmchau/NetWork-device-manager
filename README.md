@@ -36,6 +36,27 @@ docker-compose logs -f backend
 
 访问 http://localhost:3000 进入前端界面。
 
+## 开发模式（热重载，推荐日常使用）
+
+修改代码后无需重建镜像，改动即时生效：
+
+```bash
+# 首次启动开发模式
+make dev
+# 或: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# 拉取代码后快速更新（仅后端变更是秒级重启）
+make update
+
+# 查看日志
+docker-compose logs -f backend
+```
+
+原理：
+- **后端**：挂载本地源码到容器，`uvicorn --reload` 检测文件变更自动重启
+- **前端**：`npm start` 开发服务器，浏览器 HMR 热更新模块
+- 只有 `requirements.txt` 或 `package.json` 变更时才需 `make dev` 重建
+
 ## 手动部署
 
 ```bash
@@ -100,7 +121,9 @@ netWork-device-manager/
 │   │   └── pages/           # 页面（设备列表、巡检记录）
 │   └── nginx.conf           # Nginx 反向代理配置
 ├── docker-compose.yml        # Docker 一键部署
-└── deploy.sh                 # Linux 部署脚本
+├── docker-compose.dev.yml    # 开发模式（热重载）
+├── Makefile                  # 常用命令（dev/prod/update）
+├── deploy.sh                 # Linux 部署脚本
 ```
 
 ## API 接口

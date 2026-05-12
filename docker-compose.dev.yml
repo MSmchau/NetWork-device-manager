@@ -1,0 +1,26 @@
+services:
+  backend:
+    # 挂载后端代码，修改后 uvicorn --reload 自动重启
+    volumes:
+      - ./backend/app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    # 使用开发 Dockerfile（npm start + HMR 热更新）
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+    environment:
+      - REACT_APP_API_BASE=/api/v1
+      - WDS_SOCKET_PORT=3000
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend
