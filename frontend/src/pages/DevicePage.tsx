@@ -52,26 +52,61 @@ export default function DevicePage() {
   };
 
   const handleDelete = async (id: number) => {
-    await deleteDevice(id);
-    message.success('设备已删除');
-    load();
+    try {
+      await deleteDevice(id);
+      message.success('设备已删除');
+      load();
+    } catch {
+      message.error('删除失败');
+    }
   };
 
   const handleInspect = async (id: number) => {
-    await triggerInspect(id);
-    message.success('巡检已触发，请查看巡检记录');
+    try {
+      await triggerInspect(id);
+      message.success('巡检已触发，请查看巡检记录');
+    } catch {
+      message.error('巡检触发失败');
+    }
+  };
+
+  const handleBackup = async (id: number) => {
+    try {
+      const res = await triggerBackup(id);
+      if (res.data.success) {
+        message.success('备份成功');
+      } else {
+        message.error('备份失败');
+      }
+    } catch {
+      message.error('备份操作失败');
+    }
+  };
+
+  const handleRefresh = async (id: number) => {
+    try {
+      await refreshDevice(id);
+      message.success('设备状态已刷新');
+      load();
+    } catch {
+      message.error('刷新失败');
+    }
   };
 
   const handleModalOk = async (values: any) => {
-    if (editing) {
-      await updateDevice(editing.id, values);
-      message.success('设备已更新');
-    } else {
-      await createDevice(values);
-      message.success('设备已添加');
+    try {
+      if (editing) {
+        await updateDevice(editing.id, values);
+        message.success('设备已更新');
+      } else {
+        await createDevice(values);
+        message.success('设备已添加');
+      }
+      setModalOpen(false);
+      load();
+    } catch {
+      message.error(editing ? '设备更新失败' : '设备添加失败');
     }
-    setModalOpen(false);
-    load();
   };
 
   const columns = [
@@ -93,10 +128,10 @@ export default function DevicePage() {
       width: 320,
       render: (_: any, r: Device) => (
         <Space>
-          <Button size="small" onClick={() => refreshDevice(r.id).then(load)}>刷新</Button>
+          <Button size="small" onClick={() => handleRefresh(r.id)}>刷新</Button>
           <Button size="small" onClick={() => handleEdit(r)}>编辑</Button>
           <Button size="small" onClick={() => handleInspect(r.id)}>巡检</Button>
-          <Button size="small" type="primary" onClick={() => triggerBackup(r.id)}>备份</Button>
+          <Button size="small" type="primary" onClick={() => handleBackup(r.id)}>备份</Button>
           <Popconfirm title="确定删除该设备？" onConfirm={() => handleDelete(r.id)}>
             <Button size="small" danger>删除</Button>
           </Popconfirm>

@@ -36,7 +36,7 @@ export default function DeviceFormModal({ open, editing, onCancel, onOk }: Props
       open={open}
       onOk={() => form.submit()}
       onCancel={onCancel}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form form={form} layout="vertical" onFinish={onOk} autoComplete="off">
         <Form.Item name="name" label="设备名称" rules={[{ required: true, message: '请输入设备名称' }]}>
