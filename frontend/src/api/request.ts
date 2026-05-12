@@ -6,16 +6,9 @@ const request = axios.create({
   timeout: 30000,
 });
 
-// 请求拦截器：自动附加认证 Token
-request.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
 // 响应拦截器：统一解包 + 全局错误处理
 request.interceptors.response.use(
-  (response) => {
+  (response: any) => {
     const body = response.data;
     // 后端统一响应格式：{ code, message, data }
     if (body.code !== undefined && body.code !== 0) {
@@ -26,13 +19,17 @@ request.interceptors.response.use(
     response.data = body.data;
     return response;
   },
-  (error) => {
-    if (error.response?.status === 401) {
-      message.error('登录已过期，请重新登录');
-      window.location.href = '/login';
-    } else if (error.response?.status >= 500) {
-      message.error('服务器内部错误');
-    } else if (!error.response) {
+  (error: any) => {
+    if (error.response) {
+      const { status, data } = error.response;
+      if (status >= 500) {
+        message.error('服务器内部错误');
+      } else if (status === 422) {
+        message.error(data?.message || '请求参数校验失败');
+      } else if (status === 400 && data?.message) {
+        message.error(data.message);
+      }
+    } else {
       message.error('网络连接失败');
     }
     return Promise.reject(error);
