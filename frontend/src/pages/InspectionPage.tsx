@@ -3,7 +3,7 @@ import { Table, Tag, Drawer, Descriptions, Button, Space, Select } from 'antd';
 import { getDevices } from '../api/device';
 import { getInspectionHistory, getInspectionReport } from '../api/inspection';
 
-interface Record {
+interface InspectionRecordItem {
   id: number;
   device_id: number;
   overall_status: string;
@@ -26,7 +26,7 @@ const statusText: Record<string, string> = {
 };
 
 export default function InspectionPage() {
-  const [records, setRecords] = useState<Record[]>([]);
+  const [records, setRecords] = useState<InspectionRecordItem[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -60,7 +60,7 @@ export default function InspectionPage() {
   const columns = [
     {
       title: '设备',
-      render: (_: any, r: Record) => deviceMap[r.device_id]?.name || `ID: ${r.device_id}`,
+      render: (_: any, r: InspectionRecordItem) => deviceMap[r.device_id]?.name || `ID: ${r.device_id}`,
     },
     { title: '巡检时间', dataIndex: 'created_at' },
     {
@@ -71,7 +71,7 @@ export default function InspectionPage() {
     { title: '摘要', dataIndex: 'summary' },
     {
       title: '操作',
-      render: (_: any, r: Record) => (
+      render: (_: any, r: InspectionRecordItem) => (
         <Button size="small" onClick={() => showReport(r.id)}>查看详情</Button>
       ),
     },
