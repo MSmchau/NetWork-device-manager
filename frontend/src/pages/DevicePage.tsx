@@ -26,7 +26,7 @@ export default function DevicePage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getDevices({ page_size: 999 });
+      const res = await getDevices({ page_size: 200 });
       setData(res.data.items || []);
     } finally {
       setLoading(false);
