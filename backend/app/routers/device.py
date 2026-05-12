@@ -45,38 +45,29 @@ def get_device_stats(db: Session = Depends(get_db)):
 
 @router.post("/import")
 def import_devices(data: List[DeviceCreate], db: Session = Depends(get_db)):
-    """批量导入设备"""
+    """批量导入设备（按 IP 去重，已有 IP 自动跳过）"""
+    existing_ips = {row[0] for row in db.query(Device.ip).all()}
     imported = 0
     skipped = 0
-    errors = []
 
     for item in data:
-        existing = db.query(Device).filter(Device.ip == item.ip).first()
-        if existing:
+        if item.ip in existing_ips:
             skipped += 1
-            errors.append({"ip": item.ip, "reason": "IP 已存在"})
             continue
-        try:
-            dev = Device(
-                name=item.name, ip=item.ip, port=item.port,
-                username=item.username, password=item.password,
-                device_type=item.device_type,
-            )
-            db.add(dev)
-            db.flush()
-            imported += 1
-        except Exception as e:
-            db.rollback()
-            errors.append({"ip": item.ip, "reason": str(e)})
-            # 重新开始事务
-            continue
+        dev = Device(
+            name=item.name, ip=item.ip, port=item.port,
+            username=item.username, password=item.password,
+            device_type=item.device_type,
+        )
+        db.add(dev)
+        existing_ips.add(item.ip)
+        imported += 1
 
     db.commit()
     return success({
         "total": len(data),
         "imported": imported,
         "skipped": skipped,
-        "errors": errors,
     }, f"导入完成：成功 {imported} 台，跳过 {skipped} 台")
 
 
