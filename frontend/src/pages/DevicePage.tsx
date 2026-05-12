@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Table, Button, Tag, Space, Popconfirm, message } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
-import { getDevices, createDevice, updateDevice, deleteDevice, refreshDevice } from '../api/device';
+import { getDevices, getDeviceStats, createDevice, updateDevice, deleteDevice, refreshDevice } from '../api/device';
 import { triggerInspect } from '../api/inspection';
 import { triggerBackup } from '../api/backup';
 import DeviceFormModal from '../components/DeviceFormModal';
+import DeviceStats from '../components/DeviceStats';
 
 interface Device {
   id: number;
@@ -19,6 +20,7 @@ interface Device {
 
 export default function DevicePage() {
   const [data, setData] = useState<Device[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -26,8 +28,12 @@ export default function DevicePage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getDevices({ page_size: 200 });
-      setData(res.data.items || []);
+      const [devRes, statsRes] = await Promise.all([
+        getDevices({ page_size: 200 }),
+        getDeviceStats(),
+      ]);
+      setData(devRes.data.items || []);
+      setStats(statsRes.data);
     } finally {
       setLoading(false);
     }
@@ -101,6 +107,7 @@ export default function DevicePage() {
 
   return (
     <>
+      <DeviceStats data={stats} />
       <div style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           添加设备

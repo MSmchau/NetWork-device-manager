@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.models.device import Device
@@ -19,6 +20,26 @@ def get_devices(db: Session = Depends(get_db), pagination: dict = Depends(common
     total = db.query(Device).count()
     items = db.query(Device).offset(pagination["skip"]).limit(pagination["page_size"]).all()
     return paginated([DeviceResponse.model_validate(d) for d in items], total, pagination["page"], pagination["page_size"])
+
+@router.get("/stats")
+def get_device_stats(db: Session = Depends(get_db)):
+    """设备统计：总数、在线/离线、类型分布"""
+    total = db.query(Device).count()
+    online = db.query(Device).filter(Device.is_online == True).count()
+    offline = db.query(Device).filter(Device.is_online == False).count()
+
+    by_type_rows = db.execute(
+        text("SELECT device_type, COUNT(*) AS count FROM devices GROUP BY device_type")
+    ).fetchall()
+    by_type = [{"name": row[0], "count": row[1]} for row in by_type_rows]
+
+    return success({
+        "total": total,
+        "online": online,
+        "offline": offline,
+        "by_type": by_type,
+    })
+
 
 @router.get("/{device_id}")
 def get_device(device_id: int, db: Session = Depends(get_db)):

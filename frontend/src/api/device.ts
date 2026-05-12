@@ -6,3 +6,4 @@ export const createDevice = (data: any) => request.post('/device', data);
 export const updateDevice = (id: number, data: any) => request.put(`/device/${id}`, data);
 export const deleteDevice = (id: number) => request.delete(`/device/${id}`);
 export const refreshDevice = (id: number) => request.post(`/device/refresh/${id}`);
+export const getDeviceStats = () => request.get('/device/stats');
