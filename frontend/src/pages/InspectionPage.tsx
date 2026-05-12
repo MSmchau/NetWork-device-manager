@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Drawer, Descriptions, Button, Space, Select } from 'antd';
+import { Table, Tag, Drawer, Descriptions, Button, Space, Select, message } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/device';
-import { getInspectionHistory, getInspectionReport } from '../api/inspection';
+import { getInspectionHistory, getInspectionReport, triggerInspect } from '../api/inspection';
 
 interface InspectionRecordItem {
   id: number;
@@ -49,6 +50,17 @@ export default function InspectionPage() {
     else setRecords([]);
   }, [selectedDevice]);
 
+  const handleTrigger = async () => {
+    if (!selectedDevice) return;
+    try {
+      await triggerInspect(selectedDevice);
+      message.success('巡检已触发，即将刷新记录');
+      loadRecords(selectedDevice);
+    } catch {
+      message.error('巡检触发失败');
+    }
+  };
+
   const showReport = async (recordId: number) => {
     const res = await getInspectionReport(recordId);
     setReport(res.data);
@@ -92,6 +104,9 @@ export default function InspectionPage() {
               <Select.Option key={d.id} value={d.id}>{d.name} ({d.ip})</Select.Option>
             ))}
           </Select>
+          <Button type="primary" icon={<SearchOutlined />} disabled={!selectedDevice} onClick={handleTrigger}>
+            触发巡检
+          </Button>
         </Space>
       </div>
       <Table rowKey="id" columns={columns} dataSource={records} pagination={{ pageSize: 10 }} />
