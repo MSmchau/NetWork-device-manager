@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: ./backend
+    ports: ["8000:8000"]
+    volumes: ["./backups:/app/backups"]
+    depends_on: [mysql]
+    environment:
+      DB_HOST: mysql
+      FERNET_SECRET_KEY: ${FERNET_SECRET_KEY:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+  frontend:
+    build: ./frontend
+    ports: ["3000:80"]
+    depends_on: [backend]
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: network_platform
+      MYSQL_USER: net_admin
+      MYSQL_PASSWORD: NetAdmin@123456
+    ports: ["3306:3306"]

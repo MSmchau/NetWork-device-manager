@@ -1,0 +1,116 @@
+import { useEffect, useState, useCallback } from 'react';
+import { Table, Button, Tag, Space, Popconfirm, message } from 'antd';
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { getDevices, createDevice, updateDevice, deleteDevice, refreshDevice } from '../api/device';
+import { triggerInspect } from '../api/inspection';
+import { triggerBackup } from '../api/backup';
+import DeviceFormModal from '../components/DeviceFormModal';
+
+interface Device {
+  id: number;
+  name: string;
+  ip: string;
+  port: number;
+  is_online: boolean;
+  cpu_usage: number;
+  mem_usage: number;
+  device_type: string;
+}
+
+export default function DevicePage() {
+  const [data, setData] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getDevices({ page_size: 999 });
+      setData(res.data.items || []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleAdd = () => {
+    setEditing(null);
+    setModalOpen(true);
+  };
+
+  const handleEdit = (record: Device) => {
+    setEditing(record);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    await deleteDevice(id);
+    message.success('设备已删除');
+    load();
+  };
+
+  const handleInspect = async (id: number) => {
+    await triggerInspect(id);
+    message.success('巡检已触发，请查看巡检记录');
+  };
+
+  const handleModalOk = async (values: any) => {
+    if (editing) {
+      await updateDevice(editing.id, values);
+      message.success('设备已更新');
+    } else {
+      await createDevice(values);
+      message.success('设备已添加');
+    }
+    setModalOpen(false);
+    load();
+  };
+
+  const columns = [
+    { title: '名称', dataIndex: 'name' },
+    { title: 'IP', dataIndex: 'ip' },
+    { title: '端口', dataIndex: 'port', render: (v: number) => v || 22 },
+    {
+      title: '状态',
+      render: (_: any, r: Device) => (
+        <Tag color={r.is_online ? 'green' : 'red'}>
+          {r.is_online ? '在线' : '离线'}
+        </Tag>
+      ),
+    },
+    { title: 'CPU', dataIndex: 'cpu_usage', render: (v: number) => `${v ?? 0}%` },
+    { title: '内存', dataIndex: 'mem_usage', render: (v: number) => `${v ?? 0}%` },
+    {
+      title: '操作',
+      width: 320,
+      render: (_: any, r: Device) => (
+        <Space>
+          <Button size="small" onClick={() => refreshDevice(r.id).then(load)}>刷新</Button>
+          <Button size="small" onClick={() => handleEdit(r)}>编辑</Button>
+          <Button size="small" onClick={() => handleInspect(r.id)}>巡检</Button>
+          <Button size="small" type="primary" onClick={() => triggerBackup(r.id)}>备份</Button>
+          <Popconfirm title="确定删除该设备？" onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>删除</Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <div style={{ marginBottom: 16 }}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+          添加设备
+        </Button>
+        <Button icon={<ReloadOutlined />} onClick={load} style={{ marginLeft: 8 }}>
+          刷新列表
+        </Button>
+      </div>
+      <Table rowKey="id" columns={columns} dataSource={data} loading={loading} pagination={{ pageSize: 10 }} />
+      <DeviceFormModal open={modalOpen} editing={editing} onCancel={() => setModalOpen(false)} onOk={handleModalOk} />
+    </>
+  );
+}

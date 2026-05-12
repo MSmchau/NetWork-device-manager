@@ -1,0 +1,31 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.models.database import get_db
+from app.models.device import Device
+from app.models.backup import BackupRecord
+from app.services.device_service import backup_config
+from app.core.response import success, paginated
+from app.core.deps import common_pagination
+from app.core.exceptions import BusinessError
+import os
+
+router = APIRouter()
+
+@router.get("/")
+def get_backups(db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
+    total = db.query(BackupRecord).count()
+    items = db.query(BackupRecord).order_by(BackupRecord.created_at.desc())\
+        .offset(pagination["skip"]).limit(pagination["page_size"]).all()
+    return paginated(items, total, pagination["page"], pagination["page_size"])
+
+@router.post("/trigger/{device_id}")
+def trigger_backup(device_id: int, db: Session = Depends(get_db)):
+    dev = db.query(Device).filter(Device.id == device_id).first()
+    if not dev:
+        raise BusinessError(404, "设备不存在")
+    ok, path = backup_config(dev)
+    rec = BackupRecord(device_id=device_id, filename=os.path.basename(path) if path else "",
+                       path=path or "", status="成功" if ok else "失败")
+    db.add(rec)
+    db.commit()
+    return success({"success": ok, "path": path}, "备份完成" if ok else "备份失败")
