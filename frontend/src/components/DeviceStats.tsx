@@ -29,11 +29,22 @@ export default function DeviceStats({ data }: { data: DeviceStatsData | null }) 
     series: [
       {
         type: 'pie',
-        radius: ['40%', '65%'],
+        radius: ['35%', '60%'],
         avoidLabelOverlap: true,
+        minShowLabelAngle: 10,
         itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
-        label: { show: true, formatter: '{b}\n{c} 台' },
-        emphasis: { label: { show: true, fontSize: 14 }, itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } },
+        label: {
+          show: true,
+          position: 'outside',
+          formatter: '{b}\n{d}%',
+          fontSize: 12,
+        },
+        labelLine: { length: 8, length2: 6, smooth: true },
+        labelLayout: { hideOverlap: true },
+        emphasis: {
+          label: { show: true, fontSize: 14, fontWeight: 'bold' },
+          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' },
+        },
         data: data.by_type.length > 0
           ? data.by_type.map((t, i) => ({ value: t.count, name: t.name, itemStyle: { color: COLORS[i % COLORS.length] } }))
           : [{ value: 1, name: '暂无设备', itemStyle: { color: '#ddd' } }],
