@@ -1,4 +1,6 @@
 FROM node:18-alpine as build
+ARG REACT_APP_API_BASE
+ENV REACT_APP_API_BASE=$REACT_APP_API_BASE
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
