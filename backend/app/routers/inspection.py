@@ -4,6 +4,7 @@ from app.models.database import get_db
 from app.models.device import Device
 from app.models.inspection import InspectionRecord
 from app.services.inspection_service import inspect_device
+from app.schemas.inspection import InspectionResponse
 from app.core.response import success, paginated
 from app.core.deps import common_pagination
 from app.core.exceptions import BusinessError
@@ -36,7 +37,7 @@ def get_inspection_history(device_id: int, db: Session = Depends(get_db), pagina
     items = db.query(InspectionRecord).filter(InspectionRecord.device_id == device_id)\
         .order_by(InspectionRecord.created_at.desc())\
         .offset(pagination["skip"]).limit(pagination["page_size"]).all()
-    return paginated(items, total, pagination["page"], pagination["page_size"])
+    return paginated([InspectionResponse.model_validate(r) for r in items], total, pagination["page"], pagination["page_size"])
 
 @router.get("/report/{record_id}")
 def get_inspection_report(record_id: int, db: Session = Depends(get_db)):

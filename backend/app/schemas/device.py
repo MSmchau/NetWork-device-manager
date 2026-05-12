@@ -25,11 +25,11 @@ class DeviceResponse(BaseModel):
     port: int
     username: str
     device_type: str
-    is_online: bool
-    cpu_usage: float
-    mem_usage: float
-    last_seen: Optional[datetime]
-    created_at: datetime
+    is_online: Optional[bool] = None
+    cpu_usage: Optional[float] = None
+    mem_usage: Optional[float] = None
+    last_seen: Optional[datetime] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

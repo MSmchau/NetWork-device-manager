@@ -6,7 +6,7 @@ from app.models.alarm import Alarm
 from app.models.backup import BackupRecord
 from app.models.inspection import InspectionRecord
 from app.services.device_service import get_device_status
-from app.schemas.device import DeviceCreate, DeviceUpdate
+from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceResponse
 from app.core.response import success, paginated
 from app.core.deps import common_pagination
 from app.core.exceptions import BusinessError
@@ -18,14 +18,14 @@ router = APIRouter()
 def get_devices(db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
     total = db.query(Device).count()
     items = db.query(Device).offset(pagination["skip"]).limit(pagination["page_size"]).all()
-    return paginated(items, total, pagination["page"], pagination["page_size"])
+    return paginated([DeviceResponse.model_validate(d) for d in items], total, pagination["page"], pagination["page_size"])
 
 @router.get("/{device_id}")
 def get_device(device_id: int, db: Session = Depends(get_db)):
     dev = db.query(Device).filter(Device.id == device_id).first()
     if not dev:
         raise BusinessError(404, "设备不存在")
-    return success(dev)
+    return success(DeviceResponse.model_validate(dev))
 
 @router.post("/", status_code=201)
 def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
@@ -43,7 +43,7 @@ def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
     db.add(dev)
     db.commit()
     db.refresh(dev)
-    return success(dev, "设备创建成功")
+    return success(DeviceResponse.model_validate(dev), "设备创建成功")
 
 @router.put("/{device_id}")
 def update_device(device_id: int, data: DeviceUpdate, db: Session = Depends(get_db)):
@@ -57,7 +57,7 @@ def update_device(device_id: int, data: DeviceUpdate, db: Session = Depends(get_
         setattr(dev, field, value)
     db.commit()
     db.refresh(dev)
-    return success(dev, "设备已更新")
+    return success(DeviceResponse.model_validate(dev), "设备已更新")
 
 @router.delete("/{device_id}")
 def delete_device(device_id: int, db: Session = Depends(get_db)):

@@ -4,6 +4,7 @@ from app.models.database import get_db
 from app.models.device import Device
 from app.models.backup import BackupRecord
 from app.services.device_service import backup_config
+from app.schemas.backup import BackupRecordResponse
 from app.core.response import success, paginated
 from app.core.deps import common_pagination
 from app.core.exceptions import BusinessError
@@ -16,7 +17,7 @@ def get_backups(db: Session = Depends(get_db), pagination: dict = Depends(common
     total = db.query(BackupRecord).count()
     items = db.query(BackupRecord).order_by(BackupRecord.created_at.desc())\
         .offset(pagination["skip"]).limit(pagination["page_size"]).all()
-    return paginated(items, total, pagination["page"], pagination["page_size"])
+    return paginated([BackupRecordResponse.model_validate(r) for r in items], total, pagination["page"], pagination["page_size"])
 
 @router.post("/trigger/{device_id}")
 def trigger_backup(device_id: int, db: Session = Depends(get_db)):
