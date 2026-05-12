@@ -1,2 +1,3 @@
 import request from './request';
-export const getAlarms = () => request.get('/alarm');
+export const getAlarms = (params?: { page?: number; page_size?: number }) =>
+  request.get('/alarm', { params });
