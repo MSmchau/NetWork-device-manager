@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Drawer, Descriptions, Button, Space, Select, message, Empty, Spin } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { Table, Tag, Drawer, Descriptions, Button, Space, Select, Popconfirm, message, Empty, Spin } from 'antd';
+import { SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/device';
-import { getInspectionHistory, getInspectionReport, triggerInspect } from '../api/inspection';
+import { getInspectionHistory, getInspectionReport, triggerInspect, deleteInspection } from '../api/inspection';
 
 interface InspectionRecordItem {
   id: number;
@@ -86,6 +86,16 @@ export default function InspectionPage() {
     }
   };
 
+  const handleDeleteRecord = async (id: number) => {
+    try {
+      await deleteInspection(id);
+      message.success('巡检记录已删除');
+      if (selectedDevice) loadRecords(selectedDevice);
+    } catch {
+      message.error('删除失败');
+    }
+  };
+
   const deviceMap = Object.fromEntries(devices.map((d) => [d.id, d]));
 
   const columns = [
@@ -102,8 +112,14 @@ export default function InspectionPage() {
     { title: '摘要', dataIndex: 'summary' },
     {
       title: '操作',
+      width: 160,
       render: (_: any, r: InspectionRecordItem) => (
-        <Button size="small" onClick={() => showReport(r.id)}>查看详情</Button>
+        <Space>
+          <Button size="small" onClick={() => showReport(r.id)}>查看详情</Button>
+          <Popconfirm title="确定删除该巡检记录？" onConfirm={() => handleDeleteRecord(r.id)}>
+            <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

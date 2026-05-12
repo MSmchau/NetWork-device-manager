@@ -53,3 +53,14 @@ def get_inspection_report(record_id: int, db: Session = Depends(get_db)):
         "summary": record.summary,
         "created_at": record.created_at,
     })
+
+
+@router.delete("/{record_id}")
+def delete_inspection(record_id: int, db: Session = Depends(get_db)):
+    """删除巡检记录"""
+    rec = db.query(InspectionRecord).filter(InspectionRecord.id == record_id).first()
+    if not rec:
+        raise BusinessError(404, "巡检记录不存在")
+    db.delete(rec)
+    db.commit()
+    return success(None, "巡检记录已删除")

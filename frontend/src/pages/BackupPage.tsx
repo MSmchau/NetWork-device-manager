@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Button, Space, Select, message } from 'antd';
-import { CloudDownloadOutlined } from '@ant-design/icons';
-import { getBackups, triggerBackup } from '../api/backup';
+import { Table, Tag, Button, Space, Select, Popconfirm, message } from 'antd';
+import { CloudDownloadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getBackups, triggerBackup, deleteBackup } from '../api/backup';
 import { getDevices } from '../api/device';
 
 interface BackupItem {
@@ -49,6 +49,16 @@ export default function BackupPage() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteBackup(id);
+      message.success('备份记录已删除');
+      load();
+    } catch {
+      message.error('删除失败');
+    }
+  };
+
   const deviceMap = Object.fromEntries(devices.map((d) => [d.id, d]));
 
   const columns = [
@@ -63,6 +73,15 @@ export default function BackupPage() {
       render: (v: string) => <Tag color={v === '成功' ? 'green' : 'red'}>{v}</Tag>,
     },
     { title: '时间', dataIndex: 'created_at', width: 180 },
+    {
+      title: '操作',
+      width: 80,
+      render: (_: any, r: BackupItem) => (
+        <Popconfirm title="确定删除该备份记录？" onConfirm={() => handleDelete(r.id)}>
+          <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+        </Popconfirm>
+      ),
+    },
   ];
 
   return (

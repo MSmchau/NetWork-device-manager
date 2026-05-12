@@ -30,3 +30,17 @@ def trigger_backup(device_id: int, db: Session = Depends(get_db)):
     db.add(rec)
     db.commit()
     return success({"success": ok, "path": path}, "备份完成" if ok else "备份失败")
+
+
+@router.delete("/{record_id}")
+def delete_backup(record_id: int, db: Session = Depends(get_db)):
+    """删除备份记录"""
+    rec = db.query(BackupRecord).filter(BackupRecord.id == record_id).first()
+    if not rec:
+        raise BusinessError(404, "备份记录不存在")
+    # 删除物理文件
+    if rec.path and os.path.exists(rec.path):
+        os.remove(rec.path)
+    db.delete(rec)
+    db.commit()
+    return success(None, "备份记录已删除")
