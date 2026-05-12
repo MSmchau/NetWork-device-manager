@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Table, Button, Tag, Space, Popconfirm, message } from 'antd';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
-import { getDevices, getDeviceStats, createDevice, updateDevice, deleteDevice, refreshDevice } from '../api/device';
+import { Table, Button, Tag, Space, Popconfirm, message, Dropdown } from 'antd';
+import { PlusOutlined, ReloadOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { getDevices, getDeviceStats, createDevice, updateDevice, deleteDevice, refreshDevice, getExportUrl } from '../api/device';
 import { triggerInspect } from '../api/inspection';
 import { triggerBackup } from '../api/backup';
 import DeviceFormModal from '../components/DeviceFormModal';
 import DeviceStats from '../components/DeviceStats';
+import ImportModal from '../components/ImportModal';
 
 interface Device {
   id: number;
@@ -24,6 +25,7 @@ export default function DevicePage() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -144,14 +146,32 @@ export default function DevicePage() {
     <>
       <DeviceStats data={stats} />
       <div style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          添加设备
-        </Button>
-        <Button icon={<ReloadOutlined />} onClick={load} style={{ marginLeft: 8 }}>
-          刷新列表
-        </Button>
+        <Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            添加设备
+          </Button>
+          <Button icon={<UploadOutlined />} onClick={() => setImportOpen(true)}>
+            批量导入
+          </Button>
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'json', label: '导出为 JSON', onClick: () => window.open(getExportUrl('json')) },
+                { key: 'csv', label: '导出为 CSV', onClick: () => window.open(getExportUrl('csv')) },
+              ],
+            }}
+          >
+            <Button icon={<DownloadOutlined />}>
+              导出
+            </Button>
+          </Dropdown>
+          <Button icon={<ReloadOutlined />} onClick={load}>
+            刷新列表
+          </Button>
+        </Space>
       </div>
       <Table rowKey="id" columns={columns} dataSource={data} loading={loading} pagination={{ pageSize: 10 }} />
+      <ImportModal open={importOpen} onCancel={() => setImportOpen(false)} onSuccess={load} />
       <DeviceFormModal open={modalOpen} editing={editing} onCancel={() => setModalOpen(false)} onOk={handleModalOk} />
     </>
   );

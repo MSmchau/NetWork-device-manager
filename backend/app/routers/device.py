@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.models.database import get_db
@@ -11,7 +11,9 @@ from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceResponse
 from app.core.response import success, paginated
 from app.core.deps import common_pagination
 from app.core.exceptions import BusinessError
-import datetime
+import datetime, csv, io
+from typing import List
+from fastapi.responses import StreamingResponse
 
 router = APIRouter()
 
@@ -39,6 +41,83 @@ def get_device_stats(db: Session = Depends(get_db)):
         "offline": offline,
         "by_type": by_type,
     })
+
+
+@router.post("/import")
+def import_devices(data: List[DeviceCreate], db: Session = Depends(get_db)):
+    """批量导入设备"""
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for item in data:
+        existing = db.query(Device).filter(Device.ip == item.ip).first()
+        if existing:
+            skipped += 1
+            errors.append({"ip": item.ip, "reason": "IP 已存在"})
+            continue
+        try:
+            dev = Device(
+                name=item.name, ip=item.ip, port=item.port,
+                username=item.username, password=item.password,
+                device_type=item.device_type,
+            )
+            db.add(dev)
+            db.flush()
+            imported += 1
+        except Exception as e:
+            db.rollback()
+            errors.append({"ip": item.ip, "reason": str(e)})
+            # 重新开始事务
+            continue
+
+    db.commit()
+    return success({
+        "total": len(data),
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+    }, f"导入完成：成功 {imported} 台，跳过 {skipped} 台")
+
+
+@router.get("/export")
+def export_devices(
+    format: str = Query("json", regex="^(json|csv)$"),
+    db: Session = Depends(get_db),
+):
+    """批量导出设备（不含密码）"""
+    devices = db.query(Device).all()
+
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["名称", "IP", "端口", "用户名", "设备类型", "在线", "CPU%", "内存%", "最后在线", "创建时间"])
+        for d in devices:
+            writer.writerow([
+                d.name, d.ip, d.port, d.username, d.device_type,
+                "是" if d.is_online else "否",
+                d.cpu_usage or 0, d.mem_usage or 0,
+                d.last_seen, d.created_at,
+            ])
+        output.seek(0)
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=devices.csv"},
+        )
+
+    # JSON 格式
+    result = [
+        {
+            "name": d.name, "ip": d.ip, "port": d.port,
+            "username": d.username, "device_type": d.device_type,
+            "is_online": d.is_online, "cpu_usage": d.cpu_usage,
+            "mem_usage": d.mem_usage, "last_seen": d.last_seen,
+            "created_at": d.created_at,
+        }
+        for d in devices
+    ]
+    return success(result, f"共 {len(devices)} 台设备")
 
 
 @router.get("/{device_id}")
