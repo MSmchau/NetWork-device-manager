@@ -39,6 +39,7 @@ def on_startup():
         task_backup_all,
         "interval",
         seconds=settings.BACKUP_INTERVAL,
+        id="backup_all",
     )
     scheduler.start()
 
