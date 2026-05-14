@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Drawer, Descriptions, Button, Space, Select, Popconfirm, message, Empty, Spin } from 'antd';
-import { SearchOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Tag, Drawer, Descriptions, Button, Space, Select, Popconfirm, message, Empty, Spin, Switch, InputNumber, Card } from 'antd';
+import { SearchOutlined, DeleteOutlined, PlayCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/device';
-import { getInspectionHistory, getInspectionReport, triggerInspect, deleteInspection } from '../api/inspection';
+import {
+  getInspectionHistory, getInspectionReport, triggerInspect,
+  triggerInspectAll, deleteInspection, getSchedule, updateSchedule,
+} from '../api/inspection';
 
 interface InspectionRecordItem {
   id: number;
@@ -32,9 +35,29 @@ export default function InspectionPage() {
   const [selectedDevice, setSelectedDevice] = useState<number | null>(null);
   const [tableLoading, setTableLoading] = useState(false);
   const [triggerLoading, setTriggerLoading] = useState(false);
+  const [triggerAllLoading, setTriggerAllLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [report, setReport] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState(false);
+
+  // 定时巡检状态
+  const [schedEnabled, setSchedEnabled] = useState(false);
+  const [schedInterval, setSchedInterval] = useState(3600);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+
+  const loadAll = async () => {
+    try {
+      const [devRes, schedRes] = await Promise.all([
+        getDevices({ page_size: 200 }),
+        getSchedule(),
+      ]);
+      setDevices(devRes.data.items || []);
+      setSchedEnabled(schedRes.data.enabled);
+      setSchedInterval(schedRes.data.interval || 3600);
+    } catch {
+      // 静默
+    }
+  };
 
   const loadDevices = async () => {
     const res = await getDevices({ page_size: 200 });
@@ -51,7 +74,7 @@ export default function InspectionPage() {
     }
   };
 
-  useEffect(() => { loadDevices(); }, []);
+  useEffect(() => { loadAll(); }, []);
 
   useEffect(() => {
     if (selectedDevice) loadRecords(selectedDevice);
@@ -69,6 +92,48 @@ export default function InspectionPage() {
       message.error('巡检触发失败');
     } finally {
       setTriggerLoading(false);
+    }
+  };
+
+  const handleTriggerAll = async () => {
+    setTriggerAllLoading(true);
+    try {
+      const res = await triggerInspectAll();
+      message.success(`全部巡检完成：成功 ${res.data.success} 台，失败 ${res.data.failed} 台`);
+      if (selectedDevice) loadRecords(selectedDevice);
+    } catch {
+      message.error('批量巡检失败');
+    } finally {
+      setTriggerAllLoading(false);
+    }
+  };
+
+  const handleScheduleToggle = async (checked: boolean) => {
+    setScheduleLoading(true);
+    try {
+      await updateSchedule({ enabled: checked, interval: schedInterval });
+      setSchedEnabled(checked);
+      message.success(`定时巡检已${checked ? '开启' : '关闭'}`);
+    } catch {
+      message.error('操作失败');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const handleIntervalChange = async (value: number | null) => {
+    if (!value || value < 60) return;
+    setSchedInterval(value);
+    if (schedEnabled) {
+      setScheduleLoading(true);
+      try {
+        await updateSchedule({ enabled: true, interval: value });
+        message.success(`巡检间隔已设为 ${value} 秒`);
+      } catch {
+        message.error('更新间隔失败');
+      } finally {
+        setScheduleLoading(false);
+      }
     }
   };
 
@@ -126,12 +191,13 @@ export default function InspectionPage() {
 
   return (
     <>
-      <div style={{ marginBottom: 16 }}>
-        <Space>
-          <span>选择设备：</span>
+      {/* 手动巡检区域 */}
+      <Card size="small" style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <span style={{ fontWeight: 500 }}>手动巡检：</span>
           <Select
             style={{ width: 240 }}
-            placeholder="请选择设备查看巡检记录"
+            placeholder="请选择设备触发巡检"
             allowClear
             onChange={(val) => setSelectedDevice(val || null)}
           >
@@ -148,8 +214,45 @@ export default function InspectionPage() {
           >
             触发巡检
           </Button>
+          <Button
+            icon={<PlayCircleOutlined />}
+            loading={triggerAllLoading}
+            onClick={handleTriggerAll}
+          >
+            全部巡检
+          </Button>
         </Space>
-      </div>
+      </Card>
+
+      {/* 定时巡检区域 */}
+      <Card size="small" style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <span style={{ fontWeight: 500 }}>定时巡检：</span>
+          <Switch
+            checked={schedEnabled}
+            loading={scheduleLoading}
+            onChange={handleScheduleToggle}
+            checkedChildren="已开启"
+            unCheckedChildren="已关闭"
+          />
+          <span style={{ color: '#666' }}>间隔：</span>
+          <InputNumber
+            min={60}
+            max={86400}
+            step={300}
+            value={schedInterval}
+            onChange={handleIntervalChange}
+            addonAfter="秒"
+            disabled={scheduleLoading}
+            style={{ width: 160 }}
+          />
+          <span style={{ color: '#999', fontSize: 12 }}>
+            {schedEnabled
+              ? `约每 ${Math.round(schedInterval / 60)} 分钟自动巡检全部设备`
+              : '定时巡检已关闭'}
+          </span>
+        </Space>
+      </Card>
 
       {!selectedDevice ? (
         <Empty description="请先选择一台设备以查看巡检记录" style={{ marginTop: 80 }} />

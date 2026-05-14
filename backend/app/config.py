@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     DEVICE_SSH_TIMEOUT: int = 10
     BACKUP_DIR: str = "./backups"
     BACKUP_INTERVAL: int = 3600
+    INSPECTION_INTERVAL: int = 3600
 
     class Config:
         env_file = ".env"

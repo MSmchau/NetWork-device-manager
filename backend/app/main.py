@@ -4,7 +4,7 @@ from app.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.routers import device, alarm, backup, log, inspection, health
-from app.services.scheduler import scheduler, task_backup_all
+from app.services.scheduler import scheduler, task_backup_all, task_inspect_all
 from app.models import inspection as inspection_model
 
 app = FastAPI(title="网络设备管理平台")
@@ -40,6 +40,12 @@ def on_startup():
         "interval",
         seconds=settings.BACKUP_INTERVAL,
         id="backup_all",
+    )
+    scheduler.add_job(
+        task_inspect_all,
+        "interval",
+        seconds=settings.INSPECTION_INTERVAL,
+        id="inspect_all",
     )
     scheduler.start()
 
