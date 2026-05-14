@@ -6,6 +6,8 @@ from app.core.logging import setup_logging
 from app.routers import device, alarm, backup, log, inspection, health
 from app.services.scheduler import scheduler, task_backup_all, task_inspect_all
 from app.models import inspection as inspection_model
+from app.models.setting import SystemSetting
+from app.models.database import SessionLocal
 
 app = FastAPI(title="网络设备管理平台")
 app.router.redirect_slashes = False  # 禁止尾斜杠自动重定向（避免 307 到 Docker 内部域名）
@@ -35,18 +37,24 @@ app.include_router(inspection.router, prefix=f"{P}/inspect", tags=["巡检"])
 @app.on_event("startup")
 def on_startup():
     setup_logging()
-    scheduler.add_job(
-        task_backup_all,
-        "interval",
-        seconds=settings.BACKUP_INTERVAL,
-        id="backup_all",
-    )
-    scheduler.add_job(
-        task_inspect_all,
-        "interval",
-        seconds=settings.INSPECTION_INTERVAL,
-        id="inspect_all",
-    )
+
+    def _load_schedule(job_id, task, default_interval):
+        """从 DB 读取定时开关状态，按需注册任务"""
+        db = SessionLocal()
+        try:
+            enabled_str = db.query(SystemSetting).filter(SystemSetting.key == f"{job_id}_enabled").first()
+            interval_str = db.query(SystemSetting).filter(SystemSetting.key == f"{job_id}_interval").first()
+            enabled = enabled_str.value == "true" if enabled_str else True
+            interval = int(interval_str.value) if interval_str else default_interval
+            if enabled:
+                scheduler.add_job(task, "interval", seconds=interval, id=job_id)
+        except Exception:
+            scheduler.add_job(task, "interval", seconds=default_interval, id=job_id)
+        finally:
+            db.close()
+
+    _load_schedule("backup_all", task_backup_all, settings.BACKUP_INTERVAL)
+    _load_schedule("inspect_all", task_inspect_all, settings.INSPECTION_INTERVAL)
     scheduler.start()
 
 @app.on_event("shutdown")

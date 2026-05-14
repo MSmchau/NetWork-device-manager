@@ -10,6 +10,7 @@ from app.core.deps import common_pagination
 from app.core.exceptions import BusinessError
 from app.services.scheduler import scheduler, task_inspect_all
 from app.config import settings
+from app.models.setting import SystemSetting
 import json
 
 router = APIRouter()
@@ -70,10 +71,20 @@ def get_schedule():
     })
 
 @router.put("/schedule")
-def update_schedule(data: dict):
+def update_schedule(data: dict, db: Session = Depends(get_db)):
     """更新定时巡检配置"""
     interval = data.get("interval", settings.INSPECTION_INTERVAL)
     enabled = data.get("enabled", True)
+
+    # 持久化开关状态
+    for key, val in [("inspect_all_enabled", str(enabled).lower()),
+                     ("inspect_all_interval", str(interval))]:
+        row = db.query(SystemSetting).filter(SystemSetting.key == key).first()
+        if row:
+            row.value = val
+        else:
+            db.add(SystemSetting(key=key, value=val))
+    db.commit()
 
     old = scheduler.get_job("inspect_all")
     if old:

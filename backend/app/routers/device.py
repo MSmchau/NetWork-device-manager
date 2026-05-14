@@ -134,6 +134,20 @@ def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
     db.add(dev)
     db.commit()
     db.refresh(dev)
+
+    # 首次创建后检测连通性，自动生成离线告警
+    try:
+        st = get_device_status(dev)
+        dev.is_online = st["online"]
+        dev.cpu_usage = st["cpu"]
+        dev.mem_usage = st["mem"]
+        dev.last_seen = datetime.datetime.now()
+        if not st["online"]:
+            _ensure_alarm(dev, db)
+        db.commit()
+    except Exception:
+        db.rollback()
+
     return success(DeviceResponse.model_validate(dev), "设备创建成功")
 
 @router.put("/{device_id}")

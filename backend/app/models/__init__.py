@@ -4,6 +4,7 @@ from app.models.alarm import Alarm
 from app.models.backup import BackupRecord
 from app.models.inspection import InspectionRecord
 from app.models.log import SystemLog
+from app.models.setting import SystemSetting
 
 # Docker 部署时自动建表；本地迁移可用 alembic
 Base.metadata.create_all(bind=engine)
