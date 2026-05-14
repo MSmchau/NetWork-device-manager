@@ -7,6 +7,8 @@ from app.routers import device, alarm, backup, log, inspection, health
 from app.services.scheduler import scheduler, task_backup_all, task_inspect_all
 from app.models import inspection as inspection_model
 from app.models.setting import SystemSetting
+from app.models.device import Device as DeviceModel
+from app.models.alarm import Alarm as AlarmModel
 from app.models.database import SessionLocal
 
 app = FastAPI(title="网络设备管理平台")
@@ -37,6 +39,32 @@ app.include_router(inspection.router, prefix=f"{P}/inspect", tags=["巡检"])
 @app.on_event("startup")
 def on_startup():
     setup_logging()
+
+    def _init_offline_alarms():
+        """启动时扫描所有离线设备，补全缺失的离线告警"""
+        db = SessionLocal()
+        try:
+            offline_devices = db.query(DeviceModel).filter(DeviceModel.is_online == False).all()
+            for dev in offline_devices:
+                existing = db.query(AlarmModel).filter(
+                    AlarmModel.device_id == dev.id,
+                    AlarmModel.alarm_type == "offline",
+                    AlarmModel.is_handled == False,
+                ).first()
+                if not existing:
+                    db.add(AlarmModel(
+                        device_id=dev.id,
+                        alarm_type="offline",
+                        level="critical",
+                        message=f"设备 {dev.name}({dev.ip}) 离线",
+                    ))
+            db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+
+    _init_offline_alarms()
 
     def _load_schedule(job_id, task, default_interval):
         """从 DB 读取定时开关状态，按需注册任务"""
