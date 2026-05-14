@@ -73,7 +73,7 @@ def import_devices(data: List[DeviceCreate], db: Session = Depends(get_db)):
 
 @router.get("/export")
 def export_devices(
-    format: str = Query("json", regex="^(json|csv)$"),
+    format: str = Query("json", pattern="^(json|csv)$"),
     db: Session = Depends(get_db),
 ):
     """批量导出设备（不含密码）"""

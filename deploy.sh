@@ -18,16 +18,14 @@ source venv/bin/activate
 pip install -r requirements.txt --quiet
 cp .env .env.prod
 sed -i 's/DEBUG=True/DEBUG=False/' .env.prod
-sed -i 's/CORS_ORIGINS=\*/CORS_ORIGINS=http://localhost:3000/' .env.prod
 
-# 3. 数据库迁移
+# 3. 数据库初始化
 echo "[3/6] 初始化数据库..."
-# 请先手动创建 MySQL 数据库：
-# mysql -u root -p -e "CREATE DATABASE network_platform DEFAULT CHARSET utf8mb4;"
-# mysql -u root -p -e "CREATE USER 'net_admin'@'localhost' IDENTIFIED BY 'NetAdmin@123456';"
-# mysql -u root -p -e "GRANT ALL ON network_platform.* TO 'net_admin'@'localhost';"
-# mysql -u root -p -e "FLUSH PRIVILEGES;"
-alembic upgrade head || echo "请先配置 MySQL 后重试"
+echo "请先手动创建 MySQL 数据库："
+echo '  mysql -u root -p -e "CREATE DATABASE network_platform DEFAULT CHARSET utf8mb4;"'
+echo '  mysql -u root -p -e "CREATE USER net_admin@localhost IDENTIFIED BY NetAdmin@123456;"'
+echo '  mysql -u root -p -e "GRANT ALL ON network_platform.* TO net_admin@localhost;"'
+echo '  mysql -u root -p -e "FLUSH PRIVILEGES;"'
 cd ..
 
 # 4. 前端构建
@@ -40,7 +38,7 @@ cd ..
 # 5. 启动服务
 echo "[5/6] 启动服务..."
 if [ "$USE_DOCKER" = true ]; then
-    docker-compose up -d
+    docker compose up -d --build
     echo "Docker 模式启动完成"
 else
     # 后台启动后端

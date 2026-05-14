@@ -72,7 +72,7 @@ export default function ImportModal({ open, onCancel, onSuccess }: Props) {
           </Space>
         )
       }
-      destroyOnHidden
+      destroyOnClose
     >
       {result ? (
         <Alert
