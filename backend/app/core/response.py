@@ -1,4 +1,5 @@
 from typing import Any
+from datetime import datetime, date
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -10,6 +11,8 @@ def _serialize(data: Any) -> Any:
         return {k: _serialize(v) for k, v in data.items()}
     if isinstance(data, (list, tuple)):
         return [_serialize(item) for item in data]
+    if isinstance(data, (datetime, date)):
+        return data.isoformat()
     return data
 
 def success(data: Any = None, message: str = "ok") -> JSONResponse:
