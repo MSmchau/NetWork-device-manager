@@ -162,6 +162,30 @@ def delete_device(device_id: int, db: Session = Depends(get_db)):
     db.commit()
     return success(None, "设备已删除")
 
+def _ensure_alarm(dev, db):
+    """根据设备在线状态自动生成告警（去重）"""
+    if not dev.is_online:
+        existing = db.query(Alarm).filter(
+            Alarm.device_id == dev.id,
+            Alarm.alarm_type == "offline",
+            Alarm.is_handled == False,
+        ).first()
+        if not existing:
+            alarm = Alarm(
+                device_id=dev.id,
+                alarm_type="offline",
+                level="critical",
+                message=f"设备 {dev.name}({dev.ip}) 离线",
+            )
+            db.add(alarm)
+    else:
+        for alarm in db.query(Alarm).filter(
+            Alarm.device_id == dev.id,
+            Alarm.alarm_type == "offline",
+            Alarm.is_handled == False,
+        ).all():
+            alarm.is_handled = True
+
 @router.post("/refresh/{device_id}")
 def refresh_status(device_id: int, db: Session = Depends(get_db)):
     dev = db.query(Device).filter(Device.id == device_id).first()
@@ -172,5 +196,6 @@ def refresh_status(device_id: int, db: Session = Depends(get_db)):
     dev.cpu_usage = st["cpu"]
     dev.mem_usage = st["mem"]
     dev.last_seen = datetime.datetime.now()
+    _ensure_alarm(dev, db)
     db.commit()
     return success(st, "状态已刷新")
