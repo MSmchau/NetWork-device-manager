@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Space, Select } from 'antd';
-import { getAlarms } from '../api/alarm';
+import { Table, Tag, Space, Select, Button, message } from 'antd';
+import { getAlarms, handleAlarm } from '../api/alarm';
 import { getDevices } from '../api/device';
 
 interface AlarmItem {
@@ -47,6 +47,16 @@ export default function AlarmPage() {
 
   useEffect(() => { load(); }, []);
 
+  const handleMark = async (id: number) => {
+    try {
+      await handleAlarm(id);
+      message.success('告警已处理');
+      load();
+    } catch {
+      message.error('操作失败');
+    }
+  };
+
   const deviceMap = Object.fromEntries(devices.map((d) => [d.id, d]));
 
   const filtered = levelFilter
@@ -71,6 +81,15 @@ export default function AlarmPage() {
       render: (v: boolean) => <Tag color={v ? 'default' : 'volcano'}>{v ? '已处理' : '未处理'}</Tag>,
     },
     { title: '时间', dataIndex: 'created_at', width: 180 },
+    {
+      title: '操作',
+      width: 100,
+      render: (_: any, r: AlarmItem) => (
+        !r.is_handled ? (
+          <Button size="small" type="primary" onClick={() => handleMark(r.id)}>处理</Button>
+        ) : null
+      ),
+    },
   ];
 
   return (
