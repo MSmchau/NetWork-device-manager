@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Drawer, Descriptions, Button, Space, Select, Popconfirm, message, Empty, Spin, Switch, InputNumber, Card } from 'antd';
+import { Table, Tag, Drawer, Descriptions, Button, Space, Select, Popconfirm, message, Spin, Switch, InputNumber, Card } from 'antd';
 import { SearchOutlined, DeleteOutlined, PlayCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/device';
 import {
@@ -64,7 +64,7 @@ export default function InspectionPage() {
     setDevices(res.data.items || []);
   };
 
-  const loadRecords = async (deviceId: number) => {
+  const loadRecords = async (deviceId?: number) => {
     setTableLoading(true);
     try {
       const res = await getInspectionHistory(deviceId);
@@ -77,8 +77,7 @@ export default function InspectionPage() {
   useEffect(() => { loadAll(); }, []);
 
   useEffect(() => {
-    if (selectedDevice) loadRecords(selectedDevice);
-    else setRecords([]);
+    loadRecords(selectedDevice ?? undefined);
   }, [selectedDevice]);
 
   const handleTrigger = async () => {
@@ -100,7 +99,7 @@ export default function InspectionPage() {
     try {
       const res = await triggerInspectAll();
       message.success(`全部巡检完成：成功 ${res.data.success} 台，失败 ${res.data.failed} 台`);
-      if (selectedDevice) loadRecords(selectedDevice);
+      loadRecords(selectedDevice ?? undefined);
     } catch {
       message.error('批量巡检失败');
     } finally {
@@ -197,7 +196,7 @@ export default function InspectionPage() {
           <span style={{ fontWeight: 500 }}>手动巡检：</span>
           <Select
             style={{ width: 240 }}
-            placeholder="请选择设备触发巡检"
+            placeholder="全部设备（查看所有记录）"
             allowClear
             onChange={(val) => setSelectedDevice(val || null)}
           >
@@ -254,10 +253,7 @@ export default function InspectionPage() {
         </Space>
       </Card>
 
-      {!selectedDevice ? (
-        <Empty description="请先选择一台设备以查看巡检记录" style={{ marginTop: 80 }} />
-      ) : (
-        <Table
+      <Table
           rowKey="id"
           columns={columns}
           dataSource={records}
@@ -265,7 +261,6 @@ export default function InspectionPage() {
           pagination={{ pageSize: 10 }}
           locale={{ emptyText: '暂无巡检记录' }}
         />
-      )}
 
       <Drawer
         title="巡检报告"

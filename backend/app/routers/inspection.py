@@ -106,6 +106,15 @@ def update_schedule(data: dict, db: Session = Depends(get_db)):
         "interval": interval,
     }, f"定时巡检已{'开启' if enabled else '关闭'}，间隔 {interval} 秒")
 
+@router.get("")
+def get_all_inspection_history(db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
+    """获取全部巡检记录"""
+    total = db.query(InspectionRecord).count()
+    items = db.query(InspectionRecord).order_by(InspectionRecord.created_at.desc())\
+        .offset(pagination["skip"]).limit(pagination["page_size"]).all()
+    return paginated([InspectionResponse.model_validate(r) for r in items], total, pagination["page"], pagination["page_size"])
+
+
 @router.get("/{device_id}")
 def get_inspection_history(device_id: int, db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
     total = db.query(InspectionRecord).filter(InspectionRecord.device_id == device_id).count()
