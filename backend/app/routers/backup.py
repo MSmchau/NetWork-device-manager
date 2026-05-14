@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.models.device import Device
@@ -97,6 +98,31 @@ def update_schedule(data: dict, db: Session = Depends(get_db)):
         "enabled": enabled,
         "interval": interval,
     }, f"定时备份已{'开启' if enabled else '关闭'}，间隔 {interval} 秒")
+
+@router.get("/{record_id}")
+def get_backup(record_id: int, db: Session = Depends(get_db)):
+    """获取单条备份记录详情"""
+    rec = db.query(BackupRecord).filter(BackupRecord.id == record_id).first()
+    if not rec:
+        raise BusinessError(404, "备份记录不存在")
+    return success(BackupRecordResponse.model_validate(rec))
+
+@router.get("/{record_id}/download")
+def download_backup(record_id: int, db: Session = Depends(get_db)):
+    """下载备份文件"""
+    rec = db.query(BackupRecord).filter(BackupRecord.id == record_id).first()
+    if not rec:
+        raise BusinessError(404, "备份记录不存在")
+    if not rec.path or not os.path.exists(rec.path):
+        raise BusinessError(404, "备份文件不存在, 可能已被删除")
+    def iter_file():
+        with open(rec.path, "rb") as f:
+            yield from f
+    return StreamingResponse(
+        iter_file(),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{rec.filename}"'},
+    )
 
 @router.delete("/{record_id}")
 def delete_backup(record_id: int, db: Session = Depends(get_db)):

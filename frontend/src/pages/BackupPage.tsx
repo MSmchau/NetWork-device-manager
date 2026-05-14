@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Table, Tag, Button, Space, Select, Popconfirm, message, Switch, InputNumber, Card, Divider } from 'antd';
-import { CloudDownloadOutlined, DeleteOutlined, PlayCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
-import { getBackups, triggerBackup, triggerBackupAll, deleteBackup, getSchedule, updateSchedule } from '../api/backup';
+import { CloudDownloadOutlined, DeleteOutlined, PlayCircleOutlined, ClockCircleOutlined, EyeOutlined } from '@ant-design/icons';
+import { getBackups, triggerBackup, triggerBackupAll, deleteBackup, getSchedule, updateSchedule, getDownloadUrl } from '../api/backup';
 import { getDevices } from '../api/device';
 
 interface BackupItem {
@@ -130,11 +130,16 @@ export default function BackupPage() {
     { title: '时间', dataIndex: 'created_at', width: 180 },
     {
       title: '操作',
-      width: 80,
+      width: 150,
       render: (_: any, r: BackupItem) => (
-        <Popconfirm title="确定删除该备份记录？" onConfirm={() => handleDelete(r.id)}>
-          <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
-        </Popconfirm>
+        <Space>
+          <Button size="small" icon={<EyeOutlined />} onClick={() => window.open(getDownloadUrl(r.id), '_blank')}>
+            查看
+          </Button>
+          <Popconfirm title="确定删除该备份记录？" onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
