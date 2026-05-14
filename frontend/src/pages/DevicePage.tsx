@@ -26,6 +26,7 @@ export default function DevicePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState<{ id: number; type: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,15 +65,19 @@ export default function DevicePage() {
   };
 
   const handleInspect = async (id: number) => {
+    setActionLoading({ id, type: 'inspect' });
     try {
       await triggerInspect(id);
       message.success('巡检已触发，请查看巡检记录');
     } catch {
       message.error('巡检触发失败');
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handleBackup = async (id: number) => {
+    setActionLoading({ id, type: 'backup' });
     try {
       const res = await triggerBackup(id);
       if (res.data.success) {
@@ -82,6 +87,8 @@ export default function DevicePage() {
       }
     } catch {
       message.error('备份操作失败');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -132,8 +139,8 @@ export default function DevicePage() {
         <Space>
           <Button size="small" onClick={() => handleRefresh(r.id)}>刷新</Button>
           <Button size="small" onClick={() => handleEdit(r)}>编辑</Button>
-          <Button size="small" onClick={() => handleInspect(r.id)}>巡检</Button>
-          <Button size="small" type="primary" onClick={() => handleBackup(r.id)}>备份</Button>
+          <Button size="small" loading={actionLoading?.id === r.id && actionLoading?.type === 'inspect'} onClick={() => handleInspect(r.id)}>巡检</Button>
+          <Button size="small" type="primary" loading={actionLoading?.id === r.id && actionLoading?.type === 'backup'} onClick={() => handleBackup(r.id)}>备份</Button>
           <Popconfirm title="确定删除该设备？" onConfirm={() => handleDelete(r.id)}>
             <Button size="small" danger>删除</Button>
           </Popconfirm>

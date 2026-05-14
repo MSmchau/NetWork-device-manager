@@ -66,7 +66,11 @@ def inspect_device(device):
                "detail": f"SSH 连接成功 ({device.ip}:{getattr(device, 'port', None) or settings.DEVICE_SSH_PORT})"}]
     try:
         for check_name, cmd in commands.items():
-            output = conn.send_command(cmd)
+            try:
+                output = conn.send_command(cmd)
+            except Exception as e:
+                checks.append({"name": check_name, "status": "fail", "detail": f"{check_name} 检查失败: {str(e)}"})
+                continue
             checks.append(_parse_check(check_name, output, net_type))
     finally:
         conn.disconnect()
