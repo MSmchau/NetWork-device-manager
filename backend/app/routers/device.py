@@ -7,6 +7,7 @@ from app.models.alarm import Alarm
 from app.models.backup import BackupRecord
 from app.models.inspection import InspectionRecord
 from app.services.device_service import get_device_status
+from app.services.scheduler import task_refresh_status_all
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceResponse
 from app.core.response import success, paginated
 from app.core.deps import common_pagination
@@ -42,6 +43,12 @@ def get_device_stats(db: Session = Depends(get_db)):
         "by_type": by_type,
     })
 
+
+@router.post("/refresh-all")
+def refresh_all_status():
+    """立即刷新所有设备状态，并自动更新离线告警"""
+    task_refresh_status_all()
+    return success(None, "所有设备状态已刷新")
 
 @router.post("/import")
 def import_devices(data: List[DeviceCreate], db: Session = Depends(get_db)):

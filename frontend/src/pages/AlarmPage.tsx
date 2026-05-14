@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Table, Tag, Space, Select, Button, message } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import { getAlarms, handleAlarm } from '../api/alarm';
-import { getDevices } from '../api/device';
+import { getDevices, refreshAllDevices } from '../api/device';
 
 interface AlarmItem {
   id: number;
@@ -29,6 +30,7 @@ export default function AlarmPage() {
   const [data, setData] = useState<AlarmItem[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [levelFilter, setLevelFilter] = useState<string | null>(null);
 
   const load = async () => {
@@ -46,6 +48,19 @@ export default function AlarmPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleRefreshStatus = async () => {
+    setRefreshing(true);
+    try {
+      await refreshAllDevices();
+      message.success('设备状态已刷新');
+      load();
+    } catch {
+      message.error('刷新失败');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleMark = async (id: number) => {
     try {
@@ -107,6 +122,9 @@ export default function AlarmPage() {
             <Select.Option value="warning">警告</Select.Option>
             <Select.Option value="info">信息</Select.Option>
           </Select>
+          <Button icon={<ReloadOutlined />} loading={refreshing} onClick={handleRefreshStatus}>
+            重新检测
+          </Button>
         </Space>
       </div>
       <Table
