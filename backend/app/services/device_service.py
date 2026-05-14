@@ -1,5 +1,7 @@
-import os, datetime
+import os, datetime, logging
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 # 各厂商 CPU/内存查询命令映射
 STATUS_COMMANDS = {
@@ -42,7 +44,8 @@ def get_device_status(device):
         cpu = _parse_cpu(cpu_out, net_type)
         mem = _parse_mem(mem_out, net_type)
         return {"online": True, "cpu": cpu, "mem": mem}
-    except Exception:
+    except Exception as e:
+        logger.error("获取设备 %s(%s) 状态异常: %s", device.name, device.ip, e)
         return {"online": False, "cpu": 0, "mem": 0}
 
 # 各厂商配置备份命令映射

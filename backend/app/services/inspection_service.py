@@ -1,6 +1,9 @@
+import logging
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetMikoTimeoutException, NetMikoAuthenticationException
 from app.config import settings, DEVICE_TYPE_MAP
+
+logger = logging.getLogger(__name__)
 
 # 各厂商标准巡检命令集
 INSPECTION_COMMANDS = {
@@ -47,7 +50,11 @@ def device_connect(device):
     }
     try:
         return ConnectHandler(**device_info)
-    except (NetMikoTimeoutException, NetMikoAuthenticationException):
+    except NetMikoTimeoutException:
+        logger.warning("SSH 连接超时: %s:%s (%s)", device.ip, device_info["port"], getattr(device, "device_type", "unknown"))
+        return None
+    except NetMikoAuthenticationException:
+        logger.warning("SSH 认证失败: %s 用户名/密码错误", device.ip)
         return None
 
 def inspect_device(device):
