@@ -81,6 +81,7 @@ def export_devices(
 
     if format == "csv":
         output = io.StringIO()
+        output.write("﻿")  # UTF-8 BOM，解决 Excel 打开乱码
         writer = csv.writer(output)
         writer.writerow(["名称", "IP", "端口", "用户名", "设备类型", "在线", "CPU%", "内存%", "最后在线", "创建时间"])
         for d in devices:
@@ -93,22 +94,29 @@ def export_devices(
         output.seek(0)
         return StreamingResponse(
             iter([output.getvalue()]),
-            media_type="text/csv",
+            media_type="text/csv; charset=utf-8-sig",
             headers={"Content-Disposition": "attachment; filename=devices.csv"},
         )
 
-    # JSON 格式
+    # JSON 格式（以文件形式下载，非 JSON API 响应）
+    import json as _json
     result = [
         {
             "name": d.name, "ip": d.ip, "port": d.port,
             "username": d.username, "device_type": d.device_type,
             "is_online": d.is_online, "cpu_usage": d.cpu_usage,
-            "mem_usage": d.mem_usage, "last_seen": d.last_seen,
-            "created_at": d.created_at,
+            "mem_usage": d.mem_usage,
+            "last_seen": d.last_seen.isoformat() if d.last_seen else None,
+            "created_at": d.created_at.isoformat() if d.created_at else None,
         }
         for d in devices
     ]
-    return success(result, f"共 {len(devices)} 台设备")
+    content = _json.dumps(result, ensure_ascii=False, indent=2)
+    return StreamingResponse(
+        iter([content]),
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=devices.json"},
+    )
 
 
 @router.get("/{device_id}")
