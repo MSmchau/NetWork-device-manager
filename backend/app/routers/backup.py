@@ -12,7 +12,7 @@ import os
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("")
 def get_backups(db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
     total = db.query(BackupRecord).count()
     items = db.query(BackupRecord).order_by(BackupRecord.created_at.desc())\

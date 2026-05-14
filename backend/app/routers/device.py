@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("")
 def get_devices(db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
     total = db.query(Device).count()
     items = db.query(Device).offset(pagination["skip"]).limit(pagination["page_size"]).all()
@@ -118,7 +118,7 @@ def get_device(device_id: int, db: Session = Depends(get_db)):
         raise BusinessError(404, "设备不存在")
     return success(DeviceResponse.model_validate(dev))
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
     existing = db.query(Device).filter(Device.ip == data.ip).first()
     if existing:

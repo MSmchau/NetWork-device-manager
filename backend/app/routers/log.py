@@ -8,7 +8,7 @@ from app.core.deps import common_pagination
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("")
 def get_logs(db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
     total = db.query(SystemLog).count()
     items = db.query(SystemLog).order_by(SystemLog.created_at.desc())\

@@ -8,6 +8,7 @@ from app.services.scheduler import scheduler, task_backup_all
 from app.models import inspection as inspection_model
 
 app = FastAPI(title="网络设备管理平台")
+app.router.redirect_slashes = False  # 禁止尾斜杠自动重定向（避免 307 到 Docker 内部域名）
 
 # CORS（生产环境应将 * 替换为具体域名）
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]

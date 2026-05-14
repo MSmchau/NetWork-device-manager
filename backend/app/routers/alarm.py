@@ -8,7 +8,7 @@ from app.core.deps import common_pagination
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("")
 def get_alarms(db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
     total = db.query(Alarm).count()
     items = db.query(Alarm).order_by(Alarm.created_at.desc())\
