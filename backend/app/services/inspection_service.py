@@ -1,9 +1,13 @@
 import logging
+import paramiko
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetMikoTimeoutException, NetMikoAuthenticationException
 from app.config import settings, DEVICE_TYPE_MAP
 
 logger = logging.getLogger(__name__)
+
+# H3C Comware 等老设备仅支持 ssh-dss 主机密钥，Paramiko 3.x+ 默认禁用，需手动启用
+paramiko.Transport._preferred_keys = ("ssh-dss",) + paramiko.Transport._preferred_keys
 
 # 各厂商标准巡检命令集
 INSPECTION_COMMANDS = {
