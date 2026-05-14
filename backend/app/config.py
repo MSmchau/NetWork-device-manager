@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     BACKUP_DIR: str = "./backups"
     BACKUP_INTERVAL: int = 3600
     INSPECTION_INTERVAL: int = 3600
+    STATUS_REFRESH_INTERVAL: int = 300
 
     class Config:
         env_file = ".env"

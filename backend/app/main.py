@@ -4,7 +4,7 @@ from app.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.routers import device, alarm, backup, log, inspection, health
-from app.services.scheduler import scheduler, task_backup_all, task_inspect_all
+from app.services.scheduler import scheduler, task_backup_all, task_inspect_all, task_refresh_status_all
 from app.models import inspection as inspection_model
 from app.models.setting import SystemSetting
 from app.models.device import Device as DeviceModel
@@ -66,6 +66,12 @@ def on_startup():
 
     _init_offline_alarms()
 
+    # 启动时刷新一次所有设备状态（重新评估离线设备）
+    try:
+        task_refresh_status_all()
+    except Exception:
+        pass
+
     def _load_schedule(job_id, task, default_interval):
         """从 DB 读取定时开关状态，按需注册任务"""
         db = SessionLocal()
@@ -83,6 +89,7 @@ def on_startup():
 
     _load_schedule("backup_all", task_backup_all, settings.BACKUP_INTERVAL)
     _load_schedule("inspect_all", task_inspect_all, settings.INSPECTION_INTERVAL)
+    _load_schedule("refresh_status", task_refresh_status_all, settings.STATUS_REFRESH_INTERVAL)
     scheduler.start()
 
 @app.on_event("shutdown")
