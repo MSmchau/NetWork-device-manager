@@ -14,14 +14,10 @@ services:
       DB_USER: net_admin
       DB_PASSWORD: NetAdmin@123456
       DB_NAME: network_platform
-      CORS_ORIGINS: http://192.168.139.172:3000,http://192.168.139.172:3001
       FERNET_SECRET_KEY: ${FERNET_SECRET_KEY:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
   frontend:
-    build:
-      context: ./frontend
-      args:
-        REACT_APP_API_BASE: http://192.168.139.172:8000/api/v1
+    build: ./frontend
     ports: ["3000:80"]
     depends_on: [backend]
   mysql:

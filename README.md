@@ -34,7 +34,7 @@ docker compose up -d
 docker compose logs -f backend
 ```
 
-访问 http://localhost:3000 进入前端界面。
+访问 http://localhost:3001 进入前端界面。
 
 ## 开发模式（热重载，推荐日常使用）
 
