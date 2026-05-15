@@ -7,4 +7,4 @@ export const getSchedule = () => request.get('/backup/schedule');
 export const updateSchedule = (data: { enabled: boolean; interval: number }) =>
   request.put('/backup/schedule', data);
 export const deleteBackup = (id: number) => request.delete(`/backup/${id}`);
-export const getDownloadUrl = (id: number) => `/api/v1/backup/${id}/download`;
+export const getDownloadUrl = (id: number) => `${request.defaults.baseURL}/backup/${id}/download`;

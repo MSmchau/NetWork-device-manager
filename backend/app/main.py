@@ -40,6 +40,14 @@ app.include_router(inspection.router, prefix=f"{P}/inspect", tags=["巡检"])
 def on_startup():
     setup_logging()
 
+    # Docker 部署时自动建表（非阻塞，数据库未就绪时不崩溃）
+    from app.models.database import Base
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("数据库自动建表失败，请检查连接: %s", e)
+
     def _migrate_devices():
         """兼容升级：为已存在的 devices 表补充 protocol 字段"""
         from sqlalchemy import text

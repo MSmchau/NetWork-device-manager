@@ -40,13 +40,17 @@ def get_device_status(device):
         cmds = STATUS_COMMANDS.get(net_type, STATUS_COMMANDS["hp_comware"])
         cpu_out = conn.send_command(cmds["cpu"])
         mem_out = conn.send_command(cmds["mem"])
-        conn.disconnect()
         cpu = _parse_cpu(cpu_out, net_type)
         mem = _parse_mem(mem_out, net_type)
         return {"online": True, "cpu": cpu, "mem": mem}
     except Exception as e:
         logger.error("获取设备 %s(%s) 状态异常: %s", device.name, device.ip, e)
         return {"online": False, "cpu": 0, "mem": 0}
+    finally:
+        try:
+            conn.disconnect()
+        except Exception:
+            pass
 
 # 各厂商配置备份命令映射
 BACKUP_COMMANDS = {
@@ -71,9 +75,13 @@ def backup_config(device):
         filename = f"{device.name}_{dt}.cfg"
         path = os.path.join(settings.BACKUP_DIR, filename)
         out = conn.send_command(cmd)
-        conn.disconnect()
         with open(path, "w", encoding="utf-8") as f:
             f.write(out)
         return True, path
     except Exception as e:
         return False, str(e)
+    finally:
+        try:
+            conn.disconnect()
+        except Exception:
+            pass

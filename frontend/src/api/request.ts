@@ -24,10 +24,12 @@ request.interceptors.response.use(
       const { status, data } = error.response;
       if (status >= 500) {
         message.error('服务器内部错误');
-      } else if (status === 422) {
-        message.error(data?.message || '请求参数校验失败');
-      } else if (status === 400 && data?.message) {
+      } else if (data?.message) {
         message.error(data.message);
+      } else if (status === 422) {
+        message.error('请求参数校验失败');
+      } else {
+        message.error(`请求失败 (${status})`);
       }
     } else {
       message.error('网络连接失败');

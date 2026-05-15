@@ -16,8 +16,8 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt --quiet
-cp .env .env.prod
-sed -i 's/DEBUG=True/DEBUG=False/' .env.prod
+cp .env .env.bak
+sed -i 's/DEBUG=True/DEBUG=False/' .env
 
 # 3. 数据库初始化
 echo "[3/6] 初始化数据库..."

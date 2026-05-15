@@ -14,8 +14,6 @@ services:
       DB_USER: net_admin
       DB_PASSWORD: NetAdmin@123456
       DB_NAME: network_platform
-      FERNET_SECRET_KEY: ${FERNET_SECRET_KEY:-}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
   frontend:
     build: ./frontend
     ports: ["3000:80"]

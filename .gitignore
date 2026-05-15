@@ -7,6 +7,9 @@ build/
 *.egg
 venv/
 .venv/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Node
 node_modules/
@@ -25,9 +28,11 @@ Thumbs.db
 
 # Environment
 backend/.env
+backend/.env.bak
 *.log
 
 # Project
 backups/
 .backups/
 修改/
+coverage/

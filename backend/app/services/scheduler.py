@@ -56,7 +56,11 @@ def task_refresh_status_all():
 
 def task_backup_all():
     """逐台设备执行备份，每台设备独立 Session 和事务，单台失败不影响其他设备"""
-    devices = SessionLocal().query(Device).all()
+    db_devices = SessionLocal()
+    try:
+        devices = db_devices.query(Device).all()
+    finally:
+        db_devices.close()
     for d in devices:
         db = SessionLocal()
         try:
@@ -76,7 +80,11 @@ def task_backup_all():
 
 def task_inspect_all():
     """逐台设备执行巡检，每台设备独立 Session 和事务"""
-    devices = SessionLocal().query(Device).all()
+    db_devices = SessionLocal()
+    try:
+        devices = db_devices.query(Device).all()
+    finally:
+        db_devices.close()
     for d in devices:
         db = SessionLocal()
         try:
