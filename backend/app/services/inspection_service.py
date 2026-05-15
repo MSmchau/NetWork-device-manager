@@ -187,7 +187,16 @@ def _parse_check(check_name, output, net_type):
 
         return {"name": "hardware", "status": status, "detail": detail}
     elif check_name == "uptime":
-        lines = [l.strip() for l in output.split("\n") if l.strip()]
-        uptime_line = lines[0] if lines else "未知"
-        return {"name": "uptime", "status": "pass", "value": uptime_line, "detail": f"运行时间: {uptime_line}"}
+        # 查找包含 uptime/运行时间的行（各厂商 display version / show version 通用）
+        uptime_text = "未知"
+        for line in output.split("\n"):
+            stripped = line.strip()
+            if re.search(r'uptime|运行时间', stripped, re.IGNORECASE):
+                # 去除 "uptime is" / "System uptime is" 等前缀
+                uptime_text = re.sub(r'^(System\s+)?(uptime\s+is\s+)', '', stripped, flags=re.IGNORECASE)
+                break
+        if uptime_text == "未知":
+            lines = [l.strip() for l in output.split("\n") if l.strip()]
+            uptime_text = lines[0] if lines else "未知"
+        return {"name": "uptime", "status": "pass", "detail": f"运行时间: {uptime_text}"}
     return {"name": check_name, "status": "pass", "detail": "检查完成"}
