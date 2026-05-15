@@ -17,6 +17,7 @@ interface Device {
   cpu_usage: number;
   mem_usage: number;
   device_type: string;
+  protocol: string;
 }
 
 export default function DevicePage() {
@@ -122,6 +123,11 @@ export default function DevicePage() {
     { title: '名称', dataIndex: 'name' },
     { title: 'IP', dataIndex: 'ip' },
     { title: '端口', dataIndex: 'port', render: (v: number) => v || 22 },
+    {
+      title: '协议',
+      dataIndex: 'protocol',
+      render: (v: string) => <Tag color={v === 'telnet' ? 'orange' : 'blue'}>{v?.toUpperCase() || 'SSH'}</Tag>,
+    },
     {
       title: '状态',
       render: (_: any, r: Device) => (

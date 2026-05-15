@@ -43,23 +43,30 @@ INSPECTION_COMMANDS = {
 }
 
 def device_connect(device):
-    """根据设备类型建立 SSH 连接，支持多厂商"""
+    """根据设备类型和协议建立连接（SSH / Telnet），支持多厂商"""
     net_type = DEVICE_TYPE_MAP.get(device.device_type, "hp_comware")
+    protocol = getattr(device, "protocol", "ssh") or "ssh"
+    port = getattr(device, "port", None) or (23 if protocol == "telnet" else settings.DEVICE_SSH_PORT)
+
     device_info = {
         "device_type": net_type,
         "host": device.ip,
         "username": device.username,
         "password": device.password,
-        "port": getattr(device, "port", None) or settings.DEVICE_SSH_PORT,
+        "port": port,
         "timeout": settings.DEVICE_SSH_TIMEOUT,
     }
+    if protocol == "telnet":
+        device_info["use_telnet"] = True
+
+    proto_label = "Telnet" if protocol == "telnet" else "SSH"
     try:
         return ConnectHandler(**device_info)
     except NetMikoTimeoutException:
-        logger.warning("SSH 连接超时: %s:%s (%s)", device.ip, device_info["port"], getattr(device, "device_type", "unknown"))
+        logger.warning("%s 连接超时: %s:%s (%s)", proto_label, device.ip, port, getattr(device, "device_type", "unknown"))
         return None
     except NetMikoAuthenticationException:
-        logger.warning("SSH 认证失败: %s 用户名/密码错误", device.ip)
+        logger.warning("%s 认证失败: %s 用户名/密码错误", proto_label, device.ip)
         return None
 
 def inspect_device(device):

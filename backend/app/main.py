@@ -9,7 +9,7 @@ from app.models import inspection as inspection_model
 from app.models.setting import SystemSetting
 from app.models.device import Device as DeviceModel
 from app.models.alarm import Alarm as AlarmModel
-from app.models.database import SessionLocal
+from app.models.database import SessionLocal, engine
 
 app = FastAPI(title="网络设备管理平台")
 app.router.redirect_slashes = False  # 禁止尾斜杠自动重定向（避免 307 到 Docker 内部域名）
@@ -39,6 +39,20 @@ app.include_router(inspection.router, prefix=f"{P}/inspect", tags=["巡检"])
 @app.on_event("startup")
 def on_startup():
     setup_logging()
+
+    def _migrate_devices():
+        """兼容升级：为已存在的 devices 表补充 protocol 字段"""
+        from sqlalchemy import text
+        db = SessionLocal()
+        try:
+            db.execute(text("ALTER TABLE devices ADD COLUMN protocol VARCHAR(8) DEFAULT 'ssh'"))
+            db.commit()
+        except Exception:
+            db.rollback()  # 字段已存在则忽略
+        finally:
+            db.close()
+
+    _migrate_devices()
 
     def _init_offline_alarms():
         """启动时扫描所有离线设备，补全缺失的离线告警"""

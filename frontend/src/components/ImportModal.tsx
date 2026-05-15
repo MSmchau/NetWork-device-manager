@@ -20,6 +20,7 @@ const COLUMN_MAP: Record<string, string> = {
   '用户名': 'username', 'username': 'username',
   '密码': 'password', 'password': 'password',
   '设备类型': 'device_type', 'device_type': 'device_type',
+  '连接协议': 'protocol', 'protocol': 'protocol',
 };
 
 function parseCSV(text: string): Record<string, any>[] {
@@ -64,8 +65,9 @@ function parseCSV(text: string): Record<string, any>[] {
 
     // 设置默认值
     if (device.port) device.port = parseInt(device.port, 10) || 22;
-    else device.port = 22;
+    else device.port = device.protocol === 'telnet' ? 23 : 22;
     if (!device.device_type) device.device_type = 'H3C';
+    if (!device.protocol) device.protocol = 'ssh';
 
     devices.push(device);
   }
@@ -97,6 +99,12 @@ export default function ImportModal({ open, onCancel, onSuccess }: Props) {
           if (!Array.isArray(devices) || devices.length === 0) {
             setResult({ type: 'error', message: '文件格式错误：应为 JSON 数组' });
             return;
+          }
+          // JSON 导入兼容：补充默认字段
+          for (const d of devices) {
+            if (!d.protocol) d.protocol = 'ssh';
+            if (!d.port) d.port = d.protocol === 'telnet' ? 23 : 22;
+            if (!d.device_type) d.device_type = 'H3C';
           }
         }
 
@@ -162,10 +170,10 @@ export default function ImportModal({ open, onCancel, onSuccess }: Props) {
             <p className="ant-upload-text">点击或拖拽 JSON / CSV 文件到此区域</p>
           </Dragger>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            JSON 格式：{`[{ "name": "...", "ip": "...", "username": "...", "password": "...", "device_type": "H3C" }]`}
+            JSON 格式：{`[{ "name": "...", "ip": "...", "username": "...", "password": "...", "device_type": "H3C", "protocol": "ssh" }]`}
           </Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            CSV 格式：name, ip, port, username, password, device_type（支持中英文列名）
+            CSV 格式：name, ip, port, username, password, device_type, protocol（支持中英文列名，protocol 默认 ssh）
           </Text>
         </Space>
       )}

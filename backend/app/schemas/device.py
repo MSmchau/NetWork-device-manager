@@ -9,6 +9,7 @@ class DeviceCreate(BaseModel):
     username: str = Field(..., max_length=32)
     password: str = Field(..., max_length=128)
     device_type: str = Field(default="H3C", max_length=32)
+    protocol: str = Field(default="ssh", max_length=8)
 
 class DeviceUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=64)
@@ -17,6 +18,7 @@ class DeviceUpdate(BaseModel):
     username: Optional[str] = Field(None, max_length=32)
     password: Optional[str] = Field(None, max_length=128)
     device_type: Optional[str] = Field(None, max_length=32)
+    protocol: Optional[str] = Field(None, max_length=8)
 
 class DeviceResponse(BaseModel):
     id: int
@@ -25,6 +27,7 @@ class DeviceResponse(BaseModel):
     port: int
     username: str
     device_type: str
+    protocol: str = "ssh"
     is_online: Optional[bool] = None
     cpu_usage: Optional[float] = None
     mem_usage: Optional[float] = None
