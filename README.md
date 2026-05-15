@@ -1,22 +1,24 @@
 # 网络设备管理平台
 
-基于 **FastAPI + React + MySQL + Docker** 的全栈网络设备运维管理平台，支持多厂商网络设备的自动巡检、配置备份与状态监控。
+基于 **FastAPI + React + MySQL + Docker** 的全栈网络设备运维管理平台，支持多厂商网络设备的自动巡检、配置备份、状态监控与告警管理。
 
 ## 功能特性
 
-- **设备管理** — 添加/编辑/删除网络设备，支持 H3C、华为、思科、锐捷
-- **自动巡检** — SSH 采集 CPU、内存、接口状态、硬件信息、运行时长
+- **设备管理** — 添加/编辑/删除网络设备，支持 SSH 和 Telnet 双协议连接
+- **批量导入/导出** — 支持 JSON 和 CSV 格式批量导入导出设备
+- **自动巡检** — SSH/Telnet 采集 CPU、内存、接口状态、硬件信息、运行时长，支持 H3C/华为/思科/锐捷
 - **配置备份** — 一键备份设备运行配置，支持历史记录追溯
 - **状态监控** — 实时查看设备在线状态、CPU/内存使用率
-- **告警管理** — 统一查看设备告警信息
-- **定时任务** — 内置调度器，支持定时全量备份
+- **告警管理** — 自动检测设备离线告警，支持标记已处理和删除告警
+- **定时任务** — 内置调度器，支持定时全量巡检、备份和状态刷新
+- **一键刷新** — 手动触发全量设备状态刷新，告警自动同步更新
 
 ## 技术栈
 
 | 层级 | 技术 |
 |------|------|
 | 前端 | React 18 + TypeScript + Ant Design 5 + Axios |
-| 后端 | Python 3.10 + FastAPI + SQLAlchemy 2.0 + Netmiko |
+| 后端 | Python 3.10 + FastAPI + SQLAlchemy 2.0 + Netmiko 4 |
 | 数据库 | MySQL 8.0 |
 | 部署 | Docker Compose / 手动部署 |
 
@@ -98,8 +100,11 @@ npm run build
 | `FERNET_SECRET_KEY` | Fernet 加密密钥 | — |
 | `JWT_SECRET_KEY` | JWT 签名密钥 | — |
 | `DEVICE_SSH_PORT` | 设备 SSH 端口 | `22` |
-| `DEVICE_SSH_TIMEOUT` | SSH 连接超时(秒) | `10` |
+| `DEVICE_SSH_TIMEOUT` | SSH/Telnet 连接超时(秒) | `10` |
 | `BACKUP_INTERVAL` | 定时备份间隔(秒) | `3600` |
+| `INSPECTION_INTERVAL` | 定时巡检间隔(秒) | `3600` |
+| `STATUS_REFRESH_INTERVAL` | 状态刷新间隔(秒) | `300` |
+| `CORS_ORIGINS` | CORS 允许的域名 | `*` |
 
 ## 项目结构
 
@@ -111,14 +116,14 @@ netWork-device-manager/
 │   │   ├── models/          # SQLAlchemy 数据模型
 │   │   ├── routers/         # API 路由
 │   │   ├── schemas/         # Pydantic 请求/响应模型
-│   │   └── services/        # SSH 连接、设备巡检、配置备份
+│   │   └── services/        # SSH/Telnet 连接、设备巡检、配置备份、定时调度
 │   └── requirements.txt
 ├── frontend/                 # React 前端
 │   ├── src/
 │   │   ├── api/             # Axios API 封装
-│   │   ├── components/      # 通用组件（设备表单）
+│   │   ├── components/      # 通用组件（设备表单、批量导入）
 │   │   ├── layouts/         # 页面布局
-│   │   └── pages/           # 页面（设备列表、巡检记录）
+│   │   └── pages/           # 页面（设备列表、巡检记录、告警信息）
 │   └── nginx.conf           # Nginx 反向代理配置
 ├── docker-compose.yml        # Docker 一键部署
 ├── docker-compose.dev.yml    # 开发模式（热重载）
@@ -128,26 +133,89 @@ netWork-device-manager/
 
 ## API 接口
 
+### 设备管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/device` | 设备列表（分页） |
+| POST | `/api/v1/device` | 创建设备 |
+| GET | `/api/v1/device/stats` | 设备统计 |
+| PUT | `/api/v1/device/{id}` | 更新设备 |
+| DELETE | `/api/v1/device/{id}` | 删除设备 |
+| POST | `/api/v1/device/import` | 批量导入设备 |
+| GET | `/api/v1/device/export` | 批量导出设备（JSON/CSV） |
+| POST | `/api/v1/device/refresh/{id}` | 刷新单台设备状态 |
+| POST | `/api/v1/device/refresh-all` | 刷新所有设备状态 |
+
+### 设备巡检
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/inspect/trigger/{id}` | 触发单台设备巡检 |
+| POST | `/api/v1/inspect/trigger-all` | 触发全部设备巡检 |
+| GET | `/api/v1/inspect/schedule` | 获取定时巡检配置 |
+| PUT | `/api/v1/inspect/schedule` | 更新定时巡检配置 |
+| GET | `/api/v1/inspect` | 巡检记录列表 |
+| GET | `/api/v1/inspect/{device_id}` | 指定设备巡检记录 |
+| GET | `/api/v1/inspect/report/{record_id}` | 巡检报告详情 |
+| DELETE | `/api/v1/inspect/{id}` | 删除巡检记录 |
+
+### 配置备份
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/backup/trigger/{id}` | 触发单台设备备份 |
+| POST | `/api/v1/backup/trigger-all` | 触发全部设备备份 |
+| GET | `/api/v1/backup` | 备份记录列表 |
+| GET | `/api/v1/backup/{id}` | 备份详情 |
+| GET | `/api/v1/backup/content/{id}` | 备份文件内容 |
+| DELETE | `/api/v1/backup/{id}` | 删除备份记录 |
+
+### 告警管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/alarm` | 告警列表（分页） |
+| PUT | `/api/v1/alarm/{id}/handle` | 标记告警已处理 |
+| DELETE | `/api/v1/alarm/{id}` | 删除告警 |
+
+### 系统
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/v1/health` | 健康检查 |
-| GET/POST | `/api/v1/device` | 设备列表/创建设备 |
-| GET/PUT/DELETE | `/api/v1/device/{id}` | 设备详情/更新/删除 |
-| POST | `/api/v1/device/refresh/{id}` | 刷新设备状态 |
-| POST | `/api/v1/inspect/{id}` | 触发设备巡检 |
-| GET | `/api/v1/inspect/{id}` | 巡检历史记录 |
-| GET | `/api/v1/inspect/report/{id}` | 巡检报告详情 |
-| POST | `/api/v1/backup/trigger/{id}` | 触发配置备份 |
-| GET | `/api/v1/backup` | 备份记录列表 |
-| GET | `/api/v1/alarm` | 告警记录列表 |
+| GET | `/api/v1/log` | 系统日志 |
 
 完整 API 文档在服务启动后访问 http://localhost:8000/docs。
 
 ## 支持的设备类型
 
-| 厂商 | device_type | Netmiko 映射 |
-|------|-------------|--------------|
-| H3C | `H3C` | `hp_comware` |
-| 华为 | `华为` | `huawei` |
-| 思科 | `思科` | `cisco_ios` |
-| 锐捷 | `锐捷` | `ruijie_os` |
+| 厂商 | device_type | Netmiko 映射 | SSH | Telnet |
+|------|-------------|--------------|-----|--------|
+| H3C | `H3C` | `hp_comware` | ✅ | ✅ |
+| 华为 | `华为` | `huawei` | ✅ | ✅ |
+| 思科 | `思科` | `cisco_ios` | ✅ | ✅ |
+| 锐捷 | `锐捷` | `ruijie_os` | ✅ | ✅ |
+
+## 连接协议说明
+
+设备支持 SSH 和 Telnet 两种连接协议，在添加或编辑设备时可选：
+
+- **SSH**（默认）— 端口 22，安全加密连接
+- **Telnet** — 端口 23，明文传输，适用于仅开放 Telnet 的老旧设备
+
+批量导入时可通过 `protocol` 字段指定（CSV 列名或 JSON 字段），省略时默认为 SSH。
+
+## 巡检检查项
+
+每次巡检自动执行以下检查，按厂商执行对应命令：
+
+| 检查项 | H3C / 华为 | 思科 | 锐捷 |
+|--------|------------|------|------|
+| CPU 使用率 | `display cpu-usage` | `show processes cpu` | `show cpu` |
+| 内存使用率 | `display memory` | `show memory` | `show memory statistics` |
+| 接口状态 | `display interface brief` | `show interfaces summary` | `show interface brief` |
+| 硬件状态 | `display device` | `show inventory` | `show device` |
+| 系统运行时间 | `display version` | `show version` | `show version` |
+
+每项检查结果分为：通过(pass) / 警告(warning) / 失败(fail)。接口检查中 DOWN 端口视为空闲未用，不影响总体状态。
