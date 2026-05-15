@@ -114,11 +114,11 @@ def _parse_check(check_name, output, net_type):
                     pass
         return {"name": "memory", "status": "warning", "detail": "未能解析内存使用率"}
     elif check_name == "interfaces":
-        up = down = 0
+        up = down = adm = 0
         lines = output.split("\n")
 
         if net_type in ("hp_comware", "huawei", "ruijie_os"):
-            # display interface brief → 第二列为 Link 状态 (UP/DOWN)
+            # display interface brief → 第二列为 Link 状态 (UP / DOWN / ADM)
             for line in lines:
                 parts = line.strip().split()
                 if len(parts) >= 2:
@@ -127,8 +127,9 @@ def _parse_check(check_name, output, net_type):
                         up += 1
                     elif status_val == "DOWN":
                         down += 1
+                    elif status_val == "ADM":
+                        adm += 1
         elif net_type == "cisco_ios":
-            # show interfaces summary → "is up" / "is down"
             for line in lines:
                 lower = line.lower()
                 if "is up" in lower and "is down" not in lower:
@@ -136,29 +137,50 @@ def _parse_check(check_name, output, net_type):
                 elif "is down" in lower:
                     down += 1
         else:
-            # 通用回退：整词匹配
             up = len(re.findall(r'\bup\b', output, re.IGNORECASE))
             down = len(re.findall(r'\bdown\b', output, re.IGNORECASE))
 
-        status = "pass" if down == 0 else ("warning" if down < 5 else "fail")
-        return {"name": "interfaces", "status": status, "detail": f"接口: {up} up, {down} down"}
+        # down 端口多为空闲未使用的端口，有任意 up 端口即视为正常
+        status = "fail" if up == 0 and down > 0 else "pass"
+        detail = f"接口: {up} up, {down} down"
+        if adm:
+            detail += f", {adm} administratively down"
+        return {"name": "interfaces", "status": status, "detail": detail}
     elif check_name == "hardware":
-        # 各厂商硬件状态关键词（大小写不敏感，整词匹配）
-        has_normal = bool(re.search(r'\bnormal\b', output, re.IGNORECASE))
-        has_ok = bool(re.search(r'\bok\b', output, re.IGNORECASE))
-        has_fault = bool(re.search(r'\bfault\b', output, re.IGNORECASE))
+        # 解析具体硬件组件状态，标记异常组件
+        abnormal = []  # 异常组件列表
+        healthy_count = 0
 
-        if has_fault:
-            status = "fail"
-        elif has_normal or has_ok:
-            status = "pass"
-        else:
+        for line in output.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+
+            # 检查异常状态关键词
+            m = re.search(r'\b(Fault|Abnormal|Absent|Offline|Failed)\b', line, re.IGNORECASE)
+            if m:
+                comp = line[:m.start()].strip()
+                abnormal.append(f"{comp} [{m.group(0)}]" if comp else f"[{m.group(0)}]")
+                continue
+
+            # 检查正常状态
+            if re.search(r'\b(Normal|OK)\b', line, re.IGNORECASE):
+                healthy_count += 1
+
+        if abnormal:
             status = "warning"
-        return {
-            "name": "hardware",
-            "status": status,
-            "detail": "硬件状态正常" if status == "pass" else "部分硬件异常",
-        }
+            detail = "部分硬件异常: " + "; ".join(abnormal)
+        elif healthy_count > 0:
+            status = "pass"
+            detail = "硬件状态正常"
+        else:
+            # 回退：简单关键词匹配（Cisco show inventory 等无状态命令）
+            has_normal = bool(re.search(r'\bnormal\b', output, re.IGNORECASE))
+            has_ok = bool(re.search(r'\bok\b', output, re.IGNORECASE))
+            status = "pass" if has_normal or has_ok else "warning"
+            detail = "硬件状态正常" if status == "pass" else "无法解析硬件状态"
+
+        return {"name": "hardware", "status": status, "detail": detail}
     elif check_name == "uptime":
         lines = [l.strip() for l in output.split("\n") if l.strip()]
         uptime_line = lines[0] if lines else "未知"
