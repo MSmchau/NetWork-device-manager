@@ -12,6 +12,67 @@ interface Props {
   onSuccess: () => void;
 }
 
+/** 列名映射：中文/英文 → 标准字段名 */
+const COLUMN_MAP: Record<string, string> = {
+  '名称': 'name', 'name': 'name',
+  'ip': 'ip', 'IP': 'ip',
+  '端口': 'port', 'port': 'port',
+  '用户名': 'username', 'username': 'username',
+  '密码': 'password', 'password': 'password',
+  '设备类型': 'device_type', 'device_type': 'device_type',
+};
+
+function parseCSV(text: string): Record<string, any>[] {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length < 2) {
+    throw new Error('CSV 文件至少需要标题行和一行数据');
+  }
+
+  // 解析标题行（支持引号包裹的字段）
+  const parseLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; continue; }
+      current += ch;
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const headers = parseLine(lines[0]);
+  const fields = headers.map(h => COLUMN_MAP[h.toLowerCase()] || COLUMN_MAP[h] || h);
+
+  const devices: Record<string, any>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseLine(lines[i]);
+    const device: Record<string, any> = {};
+
+    fields.forEach((field, idx) => {
+      if (field && idx < values.length) {
+        device[field] = values[idx];
+      }
+    });
+
+    // 校验必填字段
+    if (!device.name) throw new Error(`第 ${i + 1} 行缺少名称(name)`);
+    if (!device.ip) throw new Error(`第 ${i + 1} 行缺少 IP 地址`);
+    if (!device.username) throw new Error(`第 ${i + 1} 行缺少用户名(username)`);
+    if (!device.password) throw new Error(`第 ${i + 1} 行缺少密码(password)`);
+
+    // 设置默认值
+    if (device.port) device.port = parseInt(device.port, 10) || 22;
+    else device.port = 22;
+    if (!device.device_type) device.device_type = 'H3C';
+
+    devices.push(device);
+  }
+
+  return devices;
+}
+
 export default function ImportModal({ open, onCancel, onSuccess }: Props) {
   const [fileList, setFileList] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
@@ -21,16 +82,22 @@ export default function ImportModal({ open, onCancel, onSuccess }: Props) {
     if (fileList.length === 0) return;
 
     const file = fileList[0];
+    const isCSV = file.name.endsWith('.csv');
     const reader = new FileReader();
 
     reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
-        const devices = JSON.parse(content);
+        let devices: Record<string, any>[];
 
-        if (!Array.isArray(devices) || devices.length === 0) {
-          setResult({ type: 'error', message: '文件格式错误：应为 JSON 数组' });
-          return;
+        if (isCSV) {
+          devices = parseCSV(content);
+        } else {
+          devices = JSON.parse(content);
+          if (!Array.isArray(devices) || devices.length === 0) {
+            setResult({ type: 'error', message: '文件格式错误：应为 JSON 数组' });
+            return;
+          }
         }
 
         setImporting(true);
@@ -40,7 +107,7 @@ export default function ImportModal({ open, onCancel, onSuccess }: Props) {
           onSuccess();
         }
       } catch (err: any) {
-        setResult({ type: 'error', message: err?.message || '导入失败' });
+        setResult({ type: 'error', message: err?.response?.data?.message || err?.message || '导入失败' });
       } finally {
         setImporting(false);
       }
@@ -83,7 +150,7 @@ export default function ImportModal({ open, onCancel, onSuccess }: Props) {
       ) : (
         <Space direction="vertical" style={{ width: '100%' }}>
           <Dragger
-            accept=".json"
+            accept=".json,.csv"
             fileList={fileList}
             onRemove={() => setFileList([])}
             beforeUpload={(file) => {
@@ -92,10 +159,13 @@ export default function ImportModal({ open, onCancel, onSuccess }: Props) {
             }}
           >
             <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-            <p className="ant-upload-text">点击或拖拽 JSON 文件到此区域</p>
+            <p className="ant-upload-text">点击或拖拽 JSON / CSV 文件到此区域</p>
           </Dragger>
           <Text type="secondary" style={{ fontSize: 12 }}>
             JSON 格式：{`[{ "name": "...", "ip": "...", "username": "...", "password": "...", "device_type": "H3C" }]`}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            CSV 格式：name, ip, port, username, password, device_type（支持中英文列名）
           </Text>
         </Space>
       )}
