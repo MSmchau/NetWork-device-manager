@@ -1,4 +1,5 @@
 import logging
+import re
 import paramiko
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetMikoTimeoutException, NetMikoAuthenticationException
@@ -113,14 +114,51 @@ def _parse_check(check_name, output, net_type):
                     pass
         return {"name": "memory", "status": "warning", "detail": "未能解析内存使用率"}
     elif check_name == "interfaces":
-        up = output.count("up")
-        down = output.count("down")
+        up = down = 0
+        lines = output.split("\n")
+
+        if net_type in ("hp_comware", "huawei", "ruijie_os"):
+            # display interface brief → 第二列为 Link 状态 (UP/DOWN)
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    status_val = parts[1].upper()
+                    if status_val == "UP":
+                        up += 1
+                    elif status_val == "DOWN":
+                        down += 1
+        elif net_type == "cisco_ios":
+            # show interfaces summary → "is up" / "is down"
+            for line in lines:
+                lower = line.lower()
+                if "is up" in lower and "is down" not in lower:
+                    up += 1
+                elif "is down" in lower:
+                    down += 1
+        else:
+            # 通用回退：整词匹配
+            up = len(re.findall(r'\bup\b', output, re.IGNORECASE))
+            down = len(re.findall(r'\bdown\b', output, re.IGNORECASE))
+
         status = "pass" if down == 0 else ("warning" if down < 5 else "fail")
         return {"name": "interfaces", "status": status, "detail": f"接口: {up} up, {down} down"}
     elif check_name == "hardware":
-        normal = output.count("Normal") + output.count("ok") + output.count("OK")
-        status = "pass" if normal > 0 else "warning"
-        return {"name": "hardware", "status": status, "detail": "硬件状态正常" if normal > 0 else "部分硬件异常"}
+        # 各厂商硬件状态关键词（大小写不敏感，整词匹配）
+        has_normal = bool(re.search(r'\bnormal\b', output, re.IGNORECASE))
+        has_ok = bool(re.search(r'\bok\b', output, re.IGNORECASE))
+        has_fault = bool(re.search(r'\bfault\b', output, re.IGNORECASE))
+
+        if has_fault:
+            status = "fail"
+        elif has_normal or has_ok:
+            status = "pass"
+        else:
+            status = "warning"
+        return {
+            "name": "hardware",
+            "status": status,
+            "detail": "硬件状态正常" if status == "pass" else "部分硬件异常",
+        }
     elif check_name == "uptime":
         lines = [l.strip() for l in output.split("\n") if l.strip()]
         uptime_line = lines[0] if lines else "未知"
