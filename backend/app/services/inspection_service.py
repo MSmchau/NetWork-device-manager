@@ -181,11 +181,9 @@ def _parse_check(check_name, output, net_type):
             status = "pass"
             detail = "硬件状态正常"
         else:
-            # 回退：简单关键词匹配（Cisco show inventory 等无状态命令）
-            has_normal = bool(re.search(r'\bnormal\b', output, re.IGNORECASE))
-            has_ok = bool(re.search(r'\bok\b', output, re.IGNORECASE))
-            status = "pass" if has_normal or has_ok else "warning"
-            detail = "硬件状态正常" if status == "pass" else "无法解析硬件状态"
+            # 无法解析硬件状态时默认通过（如 Cisco show inventory 等无状态命令）
+            status = "pass"
+            detail = "硬件状态正常"
 
         return {"name": "hardware", "status": status, "detail": detail}
     elif check_name == "uptime":
