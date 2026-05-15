@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Table, Tag, Space, Select, Button, message } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
-import { getAlarms, handleAlarm } from '../api/alarm';
+import { ReloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { getAlarms, handleAlarm, deleteAlarm } from '../api/alarm';
+import { Modal } from 'antd';
 import { getDevices, refreshAllDevices } from '../api/device';
 
 interface AlarmItem {
@@ -72,6 +73,25 @@ export default function AlarmPage() {
     }
   };
 
+  const handleDelete = (id: number) => {
+    Modal.confirm({
+      title: '确认删除',
+      icon: <ExclamationCircleOutlined />,
+      content: '确定要删除该告警记录吗？',
+      okText: '确认',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await deleteAlarm(id);
+          message.success('告警已删除');
+          load();
+        } catch {
+          message.error('删除失败');
+        }
+      },
+    });
+  };
+
   const deviceMap = Object.fromEntries(devices.map((d) => [d.id, d]));
 
   const filtered = levelFilter
@@ -98,11 +118,14 @@ export default function AlarmPage() {
     { title: '时间', dataIndex: 'created_at', width: 180 },
     {
       title: '操作',
-      width: 100,
+      width: 160,
       render: (_: any, r: AlarmItem) => (
-        !r.is_handled ? (
-          <Button size="small" type="primary" onClick={() => handleMark(r.id)}>处理</Button>
-        ) : null
+        <Space>
+          {!r.is_handled && (
+            <Button size="small" type="primary" onClick={() => handleMark(r.id)}>已处理</Button>
+          )}
+          <Button size="small" danger onClick={() => handleDelete(r.id)}>删除</Button>
+        </Space>
       ),
     },
   ];

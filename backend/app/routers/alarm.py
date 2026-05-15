@@ -24,3 +24,12 @@ def handle_alarm(alarm_id: int, db: Session = Depends(get_db)):
     alarm.is_handled = True
     db.commit()
     return success(None, "告警已处理")
+
+@router.delete("/{alarm_id}")
+def delete_alarm(alarm_id: int, db: Session = Depends(get_db)):
+    alarm = db.query(Alarm).filter(Alarm.id == alarm_id).first()
+    if not alarm:
+        raise BusinessError(404, "告警不存在")
+    db.delete(alarm)
+    db.commit()
+    return success(None, "告警已删除")
