@@ -5,7 +5,7 @@ import { getDevices } from '../api/device';
 import {
   getInspectionHistory, getInspectionReport, triggerInspect,
   triggerInspectAll, deleteInspection, getSchedule, updateSchedule,
-  getExportInspectionUrl,
+  exportInspectionReport,
 } from '../api/inspection';
 
 interface InspectionRecordItem {
@@ -40,6 +40,7 @@ export default function InspectionPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [report, setReport] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   // 定时巡检状态
   const [schedEnabled, setSchedEnabled] = useState(false);
@@ -151,6 +152,25 @@ export default function InspectionPage() {
     }
   };
 
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const blob = await exportInspectionReport();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `巡检报告_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      message.error('导出报告失败');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const handleDeleteRecord = async (id: number) => {
     try {
       await deleteInspection(id);
@@ -223,7 +243,8 @@ export default function InspectionPage() {
           </Button>
           <Button
             icon={<DownloadOutlined />}
-            onClick={() => window.open(getExportInspectionUrl(), '_blank')}
+            loading={exportLoading}
+            onClick={handleExport}
           >
             导出报告
           </Button>

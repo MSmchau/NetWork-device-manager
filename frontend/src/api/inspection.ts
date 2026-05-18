@@ -8,5 +8,9 @@ export const getInspectionHistory = (deviceId?: number) =>
   deviceId ? request.get(`/inspect/${deviceId}`) : request.get('/inspect');
 export const getInspectionReport = (recordId: number) => request.get(`/inspect/report/${recordId}`);
 export const deleteInspection = (id: number) => request.delete(`/inspect/${id}`);
-export const getExportInspectionUrl = () =>
-  `${request.defaults.baseURL}/inspect/export`;
+export const exportInspectionReport = async (): Promise<Blob> => {
+  const url = `${request.defaults.baseURL}/inspect/export`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('导出失败');
+  return response.blob();
+};
