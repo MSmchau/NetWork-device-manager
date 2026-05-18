@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Table, Tag, Drawer, Descriptions, Button, Space, Select, Popconfirm, message, Spin, Switch, InputNumber, Card } from 'antd';
-import { SearchOutlined, DeleteOutlined, PlayCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { SearchOutlined, DeleteOutlined, PlayCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/device';
 import {
   getInspectionHistory, getInspectionReport, triggerInspect,
   triggerInspectAll, deleteInspection, getSchedule, updateSchedule,
+  getExportInspectionUrl,
 } from '../api/inspection';
 
 interface InspectionRecordItem {
@@ -219,6 +220,12 @@ export default function InspectionPage() {
             onClick={handleTriggerAll}
           >
             全部巡检
+          </Button>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={() => window.open(getExportInspectionUrl(), '_blank')}
+          >
+            导出报告
           </Button>
         </Space>
       </Card>

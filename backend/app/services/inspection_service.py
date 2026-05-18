@@ -200,3 +200,144 @@ def _parse_check(check_name, output, net_type):
             uptime_text = lines[0] if lines else "未知"
         return {"name": "uptime", "status": "pass", "detail": f"运行时间: {uptime_text}"}
     return {"name": check_name, "status": "pass", "detail": "检查完成"}
+
+
+def generate_inspection_excel(db):
+    """生成巡检汇总 Excel，包含汇总表和详细数据表"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from io import BytesIO
+    from sqlalchemy import func, and_
+    import json
+
+    from app.models.device import Device
+    from app.models.inspection import InspectionRecord
+
+    # 子查询：每个设备的最新巡检记录
+    subq = (
+        db.query(
+            InspectionRecord.device_id,
+            func.max(InspectionRecord.created_at).label("max_created"),
+        )
+        .group_by(InspectionRecord.device_id)
+        .subquery()
+    )
+    records = (
+        db.query(InspectionRecord)
+        .join(
+            subq,
+            and_(
+                InspectionRecord.device_id == subq.c.device_id,
+                InspectionRecord.created_at == subq.c.max_created,
+            ),
+        )
+        .all()
+    )
+
+    devices = {d.id: d for d in db.query(Device).all()}
+    device_type_map = {v: k for k, v in DEVICE_TYPE_MAP.items()}
+
+    wb = Workbook()
+
+    # ---- Sheet 1: 汇总表 ----
+    ws1 = wb.active
+    ws1.title = "汇总表"
+    header1 = ["设备名称", "IP地址", "设备类型", "巡检时间", "总体状态",
+               "连通性", "CPU", "内存", "接口", "硬件", "运行时间"]
+    ws1.append(header1)
+
+    # ---- Sheet 2: 详细数据 ----
+    ws2 = wb.create_sheet("详细数据")
+    header2 = ["设备名称", "IP地址", "巡检时间", "总体状态",
+               "检查项", "检查状态", "检查值", "详情"]
+    ws2.append(header2)
+
+    # 表头样式
+    bold_font = Font(bold=True)
+    header_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    for ws in (ws1, ws2):
+        for cell in ws[1]:
+            cell.font = bold_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center")
+
+    for record in records:
+        dev = devices.get(record.device_id)
+        dev_name = dev.name if dev else f"ID:{record.device_id}"
+        dev_ip = dev.ip if dev else ""
+        dev_type_str = device_type_map.get(dev.device_type, dev.device_type) if dev else ""
+        inspect_time = record.created_at.strftime("%Y-%m-%d %H:%M:%S") if record.created_at else ""
+        overall = record.overall_status
+
+        # 解析 result JSON
+        if not record.result:
+            continue
+        try:
+            result = json.loads(record.result)
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+        checks = result.get("checks", [])
+        check_map = {c["name"]: c for c in checks}
+
+        def _status_label(c):
+            return c.get("status", "")
+
+        def _check_str(name):
+            c = check_map.get(name)
+            if not c:
+                return ""
+            s = _status_label(c)
+            v = c.get("value")
+            if v is not None:
+                return f'{v}% ({s})'
+            d = c.get("detail", "")
+            return f"{s}" if not d else f"{s} - {d}"
+
+        # 汇总行
+        row1 = [
+            dev_name,
+            dev_ip,
+            dev_type_str,
+            inspect_time,
+            overall,
+            _check_str("connectivity"),
+            _check_str("cpu"),
+            _check_str("memory"),
+            _check_str("interfaces"),
+            _check_str("hardware"),
+            _check_str("uptime"),
+        ]
+        ws1.append(row1)
+
+        # 详细数据行（每个检查项一行）
+        for c in checks:
+            name = c.get("name", "")
+            status = _status_label(c)
+            value = c.get("value")
+            detail = c.get("detail", "")
+            ws2.append([
+                dev_name, dev_ip, inspect_time, overall,
+                name, status, value, detail,
+            ])
+
+    # 自动调整列宽
+    for ws in (ws1, ws2):
+        for col in ws.columns:
+            max_len = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    cell_len = len(str(cell.value or ""))
+                    # 中文字符按 2 倍宽度计算
+                    cn_count = sum(1 for ch in str(cell.value or "") if '一' <= ch <= '鿿')
+                    cell_len += cn_count
+                    if cell_len > max_len:
+                        max_len = cell_len
+                except Exception:
+                    pass
+            ws.column_dimensions[col_letter].width = min(max_len + 4, 60)
+
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()

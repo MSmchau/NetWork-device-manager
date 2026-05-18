@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.models.device import Device
 from app.models.inspection import InspectionRecord
-from app.services.inspection_service import inspect_device
+from app.services.inspection_service import inspect_device, generate_inspection_excel
 from app.schemas.inspection import InspectionResponse
 from app.core.response import success, paginated
 from app.core.deps import common_pagination
@@ -12,6 +13,8 @@ from app.services.scheduler import scheduler, task_inspect_all
 from app.config import settings
 from app.models.setting import SystemSetting
 import json
+from urllib.parse import quote
+from datetime import datetime
 
 router = APIRouter()
 
@@ -137,6 +140,19 @@ def get_inspection_report(record_id: int, db: Session = Depends(get_db)):
         "summary": record.summary,
         "created_at": record.created_at,
     })
+
+@router.get("/export")
+def export_inspection_report(db: Session = Depends(get_db)):
+    """导出全部设备最新巡检报告为 Excel"""
+    content = generate_inspection_excel(db)
+    filename = f"巡检报告_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    return StreamingResponse(
+        iter([content]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=inspection_report.xlsx; filename*=UTF-8''{quote(filename)}"
+        },
+    )
 
 @router.delete("/{record_id}")
 def delete_inspection(record_id: int, db: Session = Depends(get_db)):
