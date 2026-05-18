@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Drawer, Descriptions, Button, Space, Select, Popconfirm, message, Spin, Switch, InputNumber, Card } from 'antd';
+import { Table, Tag, Drawer, Descriptions, Button, Space, Select, Popconfirm, message, Spin, Card } from 'antd';
 import { SearchOutlined, DeleteOutlined, PlayCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/device';
 import {
@@ -7,7 +7,7 @@ import {
   triggerInspectAll, deleteInspection, getSchedule, updateSchedule,
   exportInspectionReport,
 } from '../api/inspection';
-
+import SchedulePanel from '../components/SchedulePanel';
 interface InspectionRecordItem {
   id: number;
   device_id: number;
@@ -251,35 +251,15 @@ export default function InspectionPage() {
         </Space>
       </Card>
 
-      {/* 定时巡检区域 */}
-      <Card size="small" style={{ marginBottom: 16 }}>
-        <Space wrap>
-          <span style={{ fontWeight: 500 }}>定时巡检：</span>
-          <Switch
-            checked={schedEnabled}
-            loading={scheduleLoading}
-            onChange={handleScheduleToggle}
-            checkedChildren="已开启"
-            unCheckedChildren="已关闭"
-          />
-          <span style={{ color: '#666' }}>间隔：</span>
-          <InputNumber
-            min={60}
-            max={86400}
-            step={300}
-            value={schedInterval}
-            onChange={handleIntervalChange}
-            addonAfter="秒"
-            disabled={scheduleLoading}
-            style={{ width: 160 }}
-          />
-          <span style={{ color: '#999', fontSize: 12 }}>
-            {schedEnabled
-              ? `约每 ${Math.round(schedInterval / 60)} 分钟自动巡检全部设备`
-              : '定时巡检已关闭'}
-          </span>
-        </Space>
-      </Card>
+      <SchedulePanel
+        title="定时巡检："
+        actionLabel="巡检"
+        enabled={schedEnabled}
+        interval={schedInterval}
+        loading={scheduleLoading}
+        onToggle={handleScheduleToggle}
+        onIntervalChange={handleIntervalChange}
+      />
 
       <Table
           rowKey="id"

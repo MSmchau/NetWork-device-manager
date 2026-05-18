@@ -11,8 +11,6 @@
     "@ant-design/icons": "^5.2.6",
     "axios": "^1.6.0",
     "react-router-dom": "^6.20.0",
-    "@reduxjs/toolkit": "^2.0.0",
-    "react-redux": "^9.0.0",
     "echarts": "^5.4.3",
     "echarts-for-react": "^3.0.2",
     "@testing-library/react": "^14.1.0",

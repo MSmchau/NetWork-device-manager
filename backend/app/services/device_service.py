@@ -1,5 +1,6 @@
 import os, datetime, logging
-from app.config import settings
+from app.config import settings, DEVICE_TYPE_MAP
+from app.services.inspection_service import device_connect
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,6 @@ def _parse_mem(output, net_type):
     return 0.0
 
 def get_device_status(device):
-    from app.config import DEVICE_TYPE_MAP
-    from app.services.inspection_service import device_connect
     net_type = DEVICE_TYPE_MAP.get(device.device_type, "hp_comware")
     conn = device_connect(device)
     if not conn:
@@ -62,8 +61,6 @@ BACKUP_COMMANDS = {
 
 def backup_config(device):
     """备份设备配置，支持多厂商"""
-    from app.config import DEVICE_TYPE_MAP
-    from app.services.inspection_service import device_connect
     os.makedirs(settings.BACKUP_DIR, exist_ok=True)
     conn = device_connect(device)
     if not conn:

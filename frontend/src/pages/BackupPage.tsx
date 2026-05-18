@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Button, Space, Select, Popconfirm, message, Switch, InputNumber, Card, Divider } from 'antd';
-import { CloudDownloadOutlined, DeleteOutlined, PlayCircleOutlined, ClockCircleOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Tag, Button, Space, Select, Popconfirm, message, Card } from 'antd';
+import { CloudDownloadOutlined, DeleteOutlined, PlayCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { getBackups, triggerBackup, triggerBackupAll, deleteBackup, getSchedule, updateSchedule, getDownloadUrl } from '../api/backup';
 import { getDevices } from '../api/device';
+import SchedulePanel from '../components/SchedulePanel';
 
 interface BackupItem {
   id: number;
@@ -179,35 +180,15 @@ export default function BackupPage() {
         </Space>
       </Card>
 
-      {/* 定时备份区域 */}
-      <Card size="small" style={{ marginBottom: 16 }}>
-        <Space wrap>
-          <span style={{ fontWeight: 500 }}>定时备份：</span>
-          <Switch
-            checked={schedEnabled}
-            loading={scheduleLoading}
-            onChange={handleScheduleToggle}
-            checkedChildren="已开启"
-            unCheckedChildren="已关闭"
-          />
-          <span style={{ color: '#666' }}>间隔：</span>
-          <InputNumber
-            min={60}
-            max={86400}
-            step={300}
-            value={schedInterval}
-            onChange={handleIntervalChange}
-            addonAfter="秒"
-            disabled={scheduleLoading}
-            style={{ width: 160 }}
-          />
-          <span style={{ color: '#999', fontSize: 12 }}>
-            {schedEnabled
-              ? `约每 ${Math.round(schedInterval / 60)} 分钟自动备份全部设备`
-              : '定时备份已关闭'}
-          </span>
-        </Space>
-      </Card>
+      <SchedulePanel
+        title="定时备份："
+        actionLabel="备份"
+        enabled={schedEnabled}
+        interval={schedInterval}
+        loading={scheduleLoading}
+        onToggle={handleScheduleToggle}
+        onIntervalChange={handleIntervalChange}
+      />
 
       <Table rowKey="id" columns={columns} dataSource={data} loading={loading} pagination={{ pageSize: 10 }} />
     </>

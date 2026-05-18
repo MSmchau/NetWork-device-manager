@@ -1,6 +1,9 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BusinessError(Exception):
     """业务异常：可预知的错误，如资源不存在、参数冲突"""
@@ -22,6 +25,7 @@ def register_exception_handlers(app):
         errors = exc.errors()
         first = errors[0] if errors else {}
         msg = first.get("msg", "参数校验失败")
+        logger.warning("Validation error on %s: %s", request.url.path, errors)
         return JSONResponse(
             status_code=422,
             content={"code": 422, "message": msg, "data": {"details": errors}},
@@ -29,6 +33,7 @@ def register_exception_handlers(app):
 
     @app.exception_handler(Exception)
     async def general_error_handler(request: Request, exc: Exception):
+        logger.exception("Unhandled exception on %s", request.url.path)
         return JSONResponse(
             status_code=500,
             content={"code": 500, "message": "服务器内部错误", "data": None},

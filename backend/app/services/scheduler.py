@@ -9,6 +9,9 @@ from app.models.database import SessionLocal
 import datetime
 import os
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 scheduler = BackgroundScheduler()
 
@@ -47,7 +50,7 @@ def task_refresh_status_all():
                     ).all():
                         alarm.is_handled = True
             except Exception:
-                pass  # 单台设备失败不影响其他设备
+                logger.warning("刷新设备 %s(%s) 状态失败", dev.name, dev.ip)
         db.commit()
     except Exception:
         db.rollback()
