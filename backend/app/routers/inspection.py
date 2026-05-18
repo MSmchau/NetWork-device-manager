@@ -18,6 +18,7 @@ from datetime import datetime
 
 router = APIRouter()
 
+
 @router.post("/trigger/{device_id}")
 def trigger_inspection(device_id: int, db: Session = Depends(get_db)):
     dev = db.query(Device).filter(Device.id == device_id).first()
@@ -36,6 +37,7 @@ def trigger_inspection(device_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(record)
     return success({"id": record.id, "overall_status": result["overall_status"], "summary": summary}, "巡检完成")
+
 
 @router.post("/trigger-all")
 def trigger_inspection_all(db: Session = Depends(get_db)):
@@ -63,6 +65,7 @@ def trigger_inspection_all(db: Session = Depends(get_db)):
     return success({"total": total, "success": success_count, "failed": total - success_count},
                    f"全部巡检完成：成功 {success_count} 台，失败 {total - success_count} 台")
 
+
 @router.get("/schedule")
 def get_schedule():
     """获取定时巡检状态"""
@@ -72,6 +75,7 @@ def get_schedule():
         "interval": job.trigger.interval_length if job else settings.INSPECTION_INTERVAL,
         "next_run": job.next_run_time.isoformat() if job and job.next_run_time else None,
     })
+
 
 @router.put("/schedule")
 def update_schedule(data: dict, db: Session = Depends(get_db)):
@@ -109,6 +113,7 @@ def update_schedule(data: dict, db: Session = Depends(get_db)):
         "interval": interval,
     }, f"定时巡检已{'开启' if enabled else '关闭'}，间隔 {interval} 秒")
 
+
 @router.get("")
 def get_all_inspection_history(db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
     """获取全部巡检记录"""
@@ -118,6 +123,20 @@ def get_all_inspection_history(db: Session = Depends(get_db), pagination: dict =
     return paginated([InspectionResponse.model_validate(r) for r in items], total, pagination["page"], pagination["page_size"])
 
 
+@router.get("/export")
+def export_inspection_report(db: Session = Depends(get_db)):
+    """导出全部设备最新巡检报告为 Excel"""
+    content = generate_inspection_excel(db)
+    filename = f"巡检报告_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    return StreamingResponse(
+        iter([content]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=inspection_report.xlsx; filename*=UTF-8''{quote(filename)}"
+        },
+    )
+
+
 @router.get("/{device_id}")
 def get_inspection_history(device_id: int, db: Session = Depends(get_db), pagination: dict = Depends(common_pagination)):
     total = db.query(InspectionRecord).filter(InspectionRecord.device_id == device_id).count()
@@ -125,6 +144,7 @@ def get_inspection_history(device_id: int, db: Session = Depends(get_db), pagina
         .order_by(InspectionRecord.created_at.desc())\
         .offset(pagination["skip"]).limit(pagination["page_size"]).all()
     return paginated([InspectionResponse.model_validate(r) for r in items], total, pagination["page"], pagination["page_size"])
+
 
 @router.get("/report/{record_id}")
 def get_inspection_report(record_id: int, db: Session = Depends(get_db)):
@@ -141,18 +161,6 @@ def get_inspection_report(record_id: int, db: Session = Depends(get_db)):
         "created_at": record.created_at,
     })
 
-@router.get("/export")
-def export_inspection_report(db: Session = Depends(get_db)):
-    """导出全部设备最新巡检报告为 Excel"""
-    content = generate_inspection_excel(db)
-    filename = f"巡检报告_{datetime.now().strftime('%Y%m%d')}.xlsx"
-    return StreamingResponse(
-        iter([content]),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f"attachment; filename=inspection_report.xlsx; filename*=UTF-8''{quote(filename)}"
-        },
-    )
 
 @router.delete("/{record_id}")
 def delete_inspection(record_id: int, db: Session = Depends(get_db)):
